@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commande PL</title>
+<style>
+:root{--bg:#0e0e12;--bg2:#16161d;--bg3:#1e1e28;--bd:rgba(255,255,255,0.07);--bd2:rgba(255,255,255,0.13);--p:#7c6ff7;--pl:#a59df8;--pd:#4e47c4;--pg:rgba(124,111,247,0.13);--tx:#e8e6f0;--tx2:#8b89a0;--tx3:#4e4c62;--green:#4ade80;--gbg:rgba(74,222,128,0.08);--red:#f87171;--rbg:rgba(248,113,113,0.08);--amber:#fbbf24;--abg:rgba(251,191,36,0.08);--blue:#60a5fa;--bbg:rgba(96,165,250,0.08);--gold:#f59e0b;--goldbg:rgba(245,158,11,0.1);--r:10px;--rl:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+.page{display:none;min-height:100vh;flex-direction:column;align-items:center;padding:2rem 1rem 4rem}
+.page.on{display:flex}.page.mid{justify-content:center;padding-top:2rem}
+.hdr{width:100%;max-width:820px;display:flex;align-items:center;justify-content:space-between;margin-bottom:2.5rem}
+.logo{display:flex;align-items:center;gap:10px}
+.ltxt{font-size:16px;font-weight:700}.lsub{font-size:11px;color:var(--tx3)}
+.nav-btn{font-size:12px;color:var(--tx2);background:var(--bg3);border:0.5px solid var(--bd2);border-radius:6px;padding:5px 12px;cursor:pointer;transition:all .15s}
+.nav-btn:hover{color:var(--tx);border-color:var(--p)}
+.card{background:var(--bg2);border:0.5px solid var(--bd);border-radius:var(--rl);padding:1.75rem;width:100%;max-width:520px}
+.card-wide{max-width:820px}
+.ctitle{font-size:18px;font-weight:600;margin-bottom:4px}
+.csub{font-size:13px;color:var(--tx2);margin-bottom:1.5rem;line-height:1.5}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--tx3);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.field input,.field select{width:100%;height:40px;background:var(--bg3);border:0.5px solid var(--bd2);border-radius:var(--r);padding:0 12px;font-size:14px;color:var(--tx);appearance:none}
+.field input:focus,.field select:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px var(--pg)}
+.field select option{background:var(--bg2)}
+.res-list{border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden;margin-bottom:.75rem}
+.res-row{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:0.5px solid var(--bd)}
+.res-row:last-child{border-bottom:none}.res-row:hover{background:var(--bg3)}
+.res-label{font-size:13px;color:var(--tx);display:flex;align-items:center;gap:9px;flex:1}
+.res-price{font-size:11px;color:var(--tx3);margin-left:6px;white-space:nowrap}
+.res-ctrl{display:flex;align-items:center;gap:8px}
+.res-ctrl input{width:56px;height:30px;text-align:center;background:var(--bg);border:0.5px solid var(--bd2);border-radius:6px;font-size:13px;font-weight:600;color:var(--pl)}
+.res-ctrl input:focus{outline:none;border-color:var(--p)}
+.pm{width:26px;height:26px;background:var(--bg);border:0.5px solid var(--bd2);border-radius:6px;cursor:pointer;font-size:16px;color:var(--tx2);display:flex;align-items:center;justify-content:center;line-height:1}
+.pm:hover{border-color:var(--p);color:var(--pl)}
+.btn{height:42px;border-radius:var(--r);font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:none;padding:0 20px;transition:all .15s}
+.bfull{width:100%}
+.bp{background:var(--p);color:#fff}.bp:hover{background:var(--pd)}
+.bgh{background:transparent;border:0.5px solid var(--bd2);color:var(--tx2)}.bgh:hover{border-color:var(--p);color:var(--tx)}
+.bgreen{background:var(--gbg);border:0.5px solid var(--green);color:var(--green)}.bgreen:hover{background:rgba(74,222,128,.15)}
+.bgold{background:var(--goldbg);border:0.5px solid var(--gold);color:var(--gold)}.bgold:hover{background:rgba(245,158,11,.18)}
+.brow{display:flex;gap:10px;margin-top:1.25rem}
+.alert{border-radius:var(--r);padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:8px;margin-bottom:1rem}
+.ag{background:var(--gbg);border:0.5px solid rgba(74,222,128,.3);color:var(--green)}
+.ar{background:var(--rbg);border:0.5px solid rgba(248,113,113,.3);color:var(--red)}
+.divider{border:none;border-top:0.5px solid var(--bd);margin:1.25rem 0}
+.my-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:0.5px solid var(--bd)}
+.my-row:last-child{border-bottom:none}
+.blmark{width:52px;height:52px;background:var(--p);border-radius:13px;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem}
+.tabs{display:flex;gap:6px;margin-bottom:1.25rem;flex-wrap:wrap}
+.tab{padding:7px 14px;border-radius:6px;font-size:13px;cursor:pointer;background:transparent;border:0.5px solid var(--bd);color:var(--tx2);transition:all .15s}
+.tab.on{background:var(--pg);border-color:var(--p);color:var(--pl);font-weight:500}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--pg);border:1.5px solid var(--p);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--pl);flex-shrink:0}
+.sec{font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.6rem}
+.sbar{position:relative;margin-bottom:1rem}
+.sbar input{width:100%;height:38px;background:var(--bg3);border:0.5px solid var(--bd2);border-radius:var(--r);padding:0 12px 0 36px;font-size:13px;color:var(--tx)}
+.sbar input:focus{outline:none;border-color:var(--p)}
+.sbar .ico{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--tx3)}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;border-bottom:0.5px solid var(--bd)}
+.tbl td{padding:9px 12px;border-bottom:0.5px solid var(--bd);color:var(--tx2);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--bg3)}
+.tag{font-size:11px;padding:3px 8px;border-radius:4px;background:rgba(124,111,247,.1);color:var(--pl);border:0.5px solid rgba(124,111,247,.2)}
+.empty{text-align:center;padding:2rem 1rem;color:var(--tx3);font-size:13px}
+.stat-pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;white-space:nowrap;border:0.5px solid}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.s-awaiting-payment{background:rgba(245,158,11,.1);color:var(--gold);border-color:rgba(245,158,11,.35)}
+.s-pending{background:rgba(78,76,98,.25);color:#8b89a0;border-color:rgba(139,137,160,.3)}
+.s-paid{background:rgba(74,222,128,.1);color:var(--green);border-color:rgba(74,222,128,.3)}
+.s-progress{background:var(--abg);color:var(--amber);border-color:rgba(251,191,36,.35)}
+.s-done{background:var(--gbg);color:var(--green);border-color:rgba(74,222,128,.35)}
+.s-ready{background:var(--bbg);color:var(--blue);border-color:rgba(96,165,250,.35)}
+.s-collected{background:var(--pg);color:var(--pl);border-color:rgba(124,111,247,.3)}
+.stat-sel{background:var(--bg);border:0.5px solid var(--bd2);border-radius:6px;color:var(--tx);font-size:12px;padding:4px 8px;cursor:pointer;appearance:none}
+.stat-sel:focus{outline:none;border-color:var(--p)}
+.cmd-acc{border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:8px}
+.cmd-acc-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;transition:background .1s}
+.cmd-acc-head:hover{background:var(--bg3)}
+.cmd-acc-body{display:none;border-top:0.5px solid var(--bd);padding:12px 14px}
+.cmd-acc.open .cmd-acc-body{display:block}
+.cmd-acc.open .chev{transform:rotate(180deg)}
+.chev{transition:transform .2s;color:var(--tx3);font-size:12px}
+.sbanner{border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px;border:0.5px solid;margin-bottom:1rem}
+.auth-tabs{display:flex;margin-bottom:1.5rem;border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden}
+.auth-tab{flex:1;padding:9px;text-align:center;font-size:13px;cursor:pointer;color:var(--tx2);background:var(--bg3);border-right:0.5px solid var(--bd)}
+.auth-tab:last-child{border-right:none}
+.auth-tab.on{background:var(--pg);color:var(--pl);font-weight:500}
+.hint{font-size:12px;color:var(--tx3);line-height:1.5;font-style:italic}
+/* prix total flottant */
+.price-bar{background:var(--bg3);border:0.5px solid var(--bd2);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.price-total{font-size:20px;font-weight:700;color:var(--gold)}
+/* modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.on{display:flex}
+.modal{background:var(--bg2);border:0.5px solid var(--bd2);border-radius:var(--rl);padding:1.75rem;width:100%;max-width:400px}
+.modal-title{font-size:17px;font-weight:600;margin-bottom:.5rem}
+.modal-sub{font-size:13px;color:var(--tx2);margin-bottom:1.25rem;line-height:1.5}
+.price-big{font-size:32px;font-weight:800;color:var(--gold);text-align:center;margin:1.25rem 0;letter-spacing:.02em}
+/* price edit table */
+.price-tbl{width:100%;border-collapse:collapse}
+.price-tbl td{padding:6px 10px;border-bottom:0.5px solid var(--bd);font-size:13px}
+.price-tbl tr:last-child td{border-bottom:none}
+.price-tbl input{width:80px;height:30px;background:var(--bg);border:0.5px solid var(--bd2);border-radius:6px;color:var(--gold);font-size:13px;font-weight:600;text-align:center;padding:0 6px}
+.price-tbl input:focus{outline:none;border-color:var(--gold)}
+/* admin list */
+.admin-row{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:0.5px solid var(--bd);font-size:13px}
+.admin-row:last-child{border-bottom:none}
+.badge-sa{background:rgba(245,158,11,.12);color:var(--gold);border:0.5px solid rgba(245,158,11,.3);border-radius:4px;font-size:11px;font-weight:600;padding:2px 8px}
+.badge-a{background:var(--pg);color:var(--pl);border:0.5px solid rgba(124,111,247,.3);border-radius:4px;font-size:11px;font-weight:600;padding:2px 8px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+</style>
+</head>
+<body>
+
+<!-- ═══ ACCUEIL ═══ -->
+<div class="page on" id="pg-home">
+  <div class="hdr">
+    <div class="logo"><div><div class="ltxt">Commande PL</div><div class="lsub" id="home-lsub">Demandes de ressources</div></div></div>
+    <div style="display:flex;gap:8px" id="nav-btns"></div>
+  </div>
+
+  <div id="home-guest" style="width:100%;max-width:500px">
+    <div class="card" style="text-align:center;padding:2.5rem 2rem">
+      <div style="font-size:36px;margin-bottom:1rem">📋</div>
+      <div class="ctitle" style="margin-bottom:.5rem">Formulaire de commande</div>
+      <div class="csub" style="margin-bottom:1.5rem">Créez un compte avec votre nom, prénom et grade pour passer une commande et suivre son avancement.</div>
+      <button class="btn bp bfull" onclick="go('pg-auth')">Créer un compte / Se connecter</button>
+    </div>
+  </div>
+
+  <div id="home-user" style="display:none;width:100%;max-width:500px">
+    <div class="card">
+      <div id="f-s1">
+        <div class="ctitle">Nouvelle commande</div>
+        <div class="csub" id="f-greeting"></div>
+        <div class="sec" style="margin-bottom:.3rem">Ressources souhaitées</div>
+        <p class="hint" style="margin-bottom:.75rem">Les quantités correspondent à des fragments ou éclats — pas à des lingots ou blocs entiers.</p>
+        <div class="res-list" id="res-list"></div>
+        <div class="price-bar">
+          <span style="font-size:13px;color:var(--tx2)">Total estimé</span>
+          <span class="price-total" id="price-display">0 Ryos</span>
+        </div>
+        <button class="btn bp bfull" onclick="fConfirm()">Valider la commande →</button>
+      </div>
+      <div id="f-s2" style="display:none">
+        <div class="alert ag">✓ Commande enregistrée — en attente de paiement.</div>
+        <div class="ctitle">Demande envoyée</div>
+        <div class="csub">Rendez-vous en jeu pour effectuer le paiement. L'admin validera ensuite votre commande.</div>
+        <div id="f-recap" style="margin-bottom:1.25rem"></div>
+        <div class="brow">
+          <button class="btn bgh" style="flex:1" onclick="fReset()">Nouvelle commande</button>
+          <button class="btn bp" style="flex:1" onclick="go('pg-account')">Mes commandes →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMATION -->
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal">
+    <div class="modal-title">Confirmer la commande</div>
+    <div class="modal-sub">Voici le montant total de votre commande. Êtes-vous sûr de vouloir l'envoyer ?</div>
+    <div id="modal-recap" style="border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:.5rem"></div>
+    <div class="price-big" id="modal-price"></div>
+    <div style="font-size:12px;color:var(--tx3);text-align:center;margin-bottom:1.25rem">Le paiement se fait en jeu après validation.</div>
+    <div class="brow" style="margin-top:0">
+      <button class="btn bgh" style="flex:1" onclick="closeModal()">Annuler</button>
+      <button class="btn bp" style="flex:1" onclick="fSubmit()">Confirmer →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AUTH ═══ -->
+<div class="page mid" id="pg-auth">
+  <div style="width:100%;max-width:400px">
+    <div class="blmark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    <div class="card">
+      <div class="auth-tabs">
+        <div class="auth-tab on" id="at-login" onclick="authTab('login')">Se connecter</div>
+        <div class="auth-tab" id="at-register" onclick="authTab('register')">Créer un compte</div>
+      </div>
+      <div id="auth-alert"></div>
+      <div id="auth-login">
+        <div class="field"><label>Nom & prénom</label><input id="l-name" type="text" placeholder="ex : Dupont Jean"/></div>
+        <div class="field"><label>Mot de passe</label><input id="l-pw" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/></div>
+        <button class="btn bp bfull" onclick="doLogin()">Se connecter</button>
+
+      </div>
+      <div id="auth-register" style="display:none">
+        <div class="field"><label>Nom & prénom</label><input id="r-name" type="text" placeholder="ex : Dupont Jean"/></div>
+        <div class="field"><label>Grade</label>
+          <select id="r-grade">
+            <option value="">— Sélectionner —</option>
+            <option>Genin</option><option>Chunin</option><option>Kakunin</option>
+            <option>Tokubetsu Chunin</option><option>Jonin</option>
+          </select>
+        </div>
+        <div class="field"><label>Mot de passe</label><input id="r-pw" type="password" placeholder="minimum 4 caractères"/></div>
+        <div class="field"><label>Confirmer</label><input id="r-pw2" type="password" placeholder="répétez" onkeydown="if(event.key==='Enter')doRegister()"/></div>
+        <button class="btn bp bfull" onclick="doRegister()">Créer le compte</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MON ESPACE ═══ -->
+<div class="page" id="pg-account">
+  <div class="hdr">
+    <div class="logo"><div><div class="ltxt">Commande PL</div><div class="lsub">Mon espace</div></div></div>
+    <div style="display:flex;gap:8px" id="account-nav"></div>
+  </div>
+  <div class="card card-wide">
+    <div id="account-header" style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem"></div>
+    <!-- zone code super-admin -->
+    <div id="sa-zone" style="display:none;margin-bottom:1.5rem">
+      <div style="border:0.5px solid var(--bd);border-radius:var(--rl);padding:1.25rem;background:var(--bg3)">
+        <div class="sec" style="margin-bottom:.5rem">🔑 Code d'accès super-admin</div>
+        <p style="font-size:12px;color:var(--tx3);margin-bottom:.75rem">Si vous avez reçu un code super-admin, entrez-le ici pour activer le rôle.</p>
+        <div style="display:flex;gap:8px">
+          <input id="sa-code-input" type="password" placeholder="Code super-admin"
+            style="flex:1;height:38px;background:var(--bg);border:0.5px solid var(--bd2);border-radius:var(--r);padding:0 12px;font-size:14px;color:var(--tx)"
+            onkeydown="if(event.key==='Enter')applySACode()"/>
+          <button class="btn bgold" style="height:38px" onclick="applySACode()">Activer</button>
+        </div>
+        <div id="sa-code-msg" style="font-size:12px;margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="sec">Mes commandes</div>
+    <div id="my-orders"></div>
+  </div>
+</div>
+
+<!-- ═══ ADMIN LOGIN — supprimé, fusionné dans pg-auth ═══ -->
+<div id="pg-admin-login" style="display:none"></div>
+
+<!-- ═══ ADMIN DASHBOARD ═══ -->
+<div class="page" id="pg-admin">
+  <div class="hdr">
+    <div class="logo"><div><div class="ltxt">Commande PL</div><div id="adm-sub" class="lsub">Tableau de bord</div></div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn bgreen" style="height:34px;font-size:12px;padding:0 14px" onclick="exportXl()">⬇ Export Excel</button>
+      <button class="nav-btn" onclick="go('pg-home')">← Mes commandes</button>
+      <button class="nav-btn" onclick="doLogout()">Déconnexion</button>
+    </div>
+  </div>
+  <div class="card card-wide">
+    <div class="tabs" id="admin-tabs">
+      <div class="tab on" id="tab-tot" onclick="aTab('tot')">📦 Totaux</div>
+      <div class="tab" id="tab-cmds" onclick="aTab('cmds')">📋 Commandes</div>
+      <div class="tab" id="tab-prices" onclick="aTab('prices')" style="display:none">💰 Prix</div>
+      <div class="tab" id="tab-admins" onclick="aTab('admins')" style="display:none">👥 Admins</div>
+      <div class="tab" id="tab-scores" onclick="aTab('scores')" style="display:none">🏆 Scores</div>
+    </div>
+    <div id="a-tot"></div>
+    <div id="a-cmds" style="display:none"></div>
+    <div id="a-prices" style="display:none"></div>
+    <div id="a-admins" style="display:none"></div>
+    <div id="a-scores" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+// ══ CONFIG ══════════════════════════════════════════════════════
+const SA_PW     = 'superadmin2025';
+const SK_CMDS   = 'gf_cmds_v7';
+const SK_USERS  = 'gf_users_v7';
+const SK_SESS   = 'gf_session_v7';
+const SK_PRICES = 'gf_prices_v7';
+const SK_ADMINS = 'gf_admins_v7';
+const CURRENCY  = 'Ryos';
+
+const RES = [
+  {id:'fleur',     label:'Fleur de vie',          icon:'🌸'},
+  {id:'fer',       label:'Fer',                   icon:'⚙️'},
+  {id:'titane',    label:'Titane',                icon:'🔩'},
+  {id:'cuivre',    label:'Cuivre',                icon:'🪙'},
+  {id:'plastique', label:'Plastique',             icon:'🧴'},
+  {id:'laine',     label:'Laine raffinée',        icon:'🧶'},
+  {id:'obsidienne',label:"Fragment d'obsidienne", icon:'🖤'},
+  {id:'or',        label:"Fragment d'or",         icon:'⭐'},
+  {id:'etoile',    label:"Fragment d'étoile",     icon:'✨'},
+  {id:'chakra',    label:"Fragment de chakra",    icon:'💠'},
+];
+
+const STATUTS = {
+  'awaiting-payment':{label:'En attente de paiement',icon:'💳',cls:'s-awaiting-payment',desc:'Votre commande est enregistrée. Effectuez le paiement en jeu.'},
+  pending:            {label:'Payé — en attente',     icon:'🕐',cls:'s-pending',          desc:'Paiement reçu. Votre commande sera traitée prochainement.'},
+  progress:           {label:'En cours',              icon:'⚒️',cls:'s-progress',         desc:'Vos ressources sont en cours de préparation.'},
+  done:               {label:'Prêt',                  icon:'✅',cls:'s-done',             desc:'Vos ressources sont prêtes — venez les récupérer !'},
+  ready:              {label:'À récupérer',            icon:'📦',cls:'s-ready',            desc:'Passez récupérer vos ressources au point de collecte.'},
+  collected:          {label:'Récupéré',               icon:'🎯',cls:'s-collected',        desc:'Commande clôturée. Merci !'},
+};
+
+// ══ STORAGE ══════════════════════════════════════════════════════
+const loadCmds   = () => {try{return JSON.parse(localStorage.getItem(SK_CMDS))||[]}catch{return[]}};
+const saveCmds   = d  => localStorage.setItem(SK_CMDS, JSON.stringify(d));
+const loadUsers  = () => {try{return JSON.parse(localStorage.getItem(SK_USERS))||{}}catch{return{}}};
+const saveUsers  = d  => localStorage.setItem(SK_USERS, JSON.stringify(d));
+const loadSess   = () => {try{return JSON.parse(sessionStorage.getItem(SK_SESS))||null}catch{return null}};
+const saveSess   = u  => sessionStorage.setItem(SK_SESS, JSON.stringify(u));
+const clearSess  = () => sessionStorage.removeItem(SK_SESS);
+const loadAdmins = () => {try{return JSON.parse(localStorage.getItem(SK_ADMINS))||[]}catch{return[]}};
+const saveAdmins = d  => localStorage.setItem(SK_ADMINS, JSON.stringify(d));
+
+function loadPrices() {
+  try {
+    const p = JSON.parse(localStorage.getItem(SK_PRICES));
+    if(p) return p;
+  } catch{}
+  const def = {}; RES.forEach(r => def[r.id] = 1);
+  return def;
+}
+function savePrices(p) { localStorage.setItem(SK_PRICES, JSON.stringify(p)); }
+
+function simpleHash(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193);}return(h>>>0).toString(16);}
+function initials(name){return name.trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase();}
+
+// ══ NAV ══════════════════════════════════════════════════════════
+function go(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  const el = document.getElementById(id);
+  if(el) el.classList.add('on');
+  window.scrollTo(0, 0);
+  if(id === 'pg-account') renderAccount();
+  if(id === 'pg-admin') { renderAdminTot(); }
+}
+function goAdmin(){ go('pg-admin'); renderAdmin(); }
+function currentUser(){ return loadSess(); }
+
+// ══ INIT UI ══════════════════════════════════════════════════════
+function initUI() {
+  const u = currentUser();
+
+  // ─ nav bar page home
+  const nav = document.getElementById('nav-btns');
+  if(nav) {
+    nav.innerHTML = '';
+    if(!u) {
+      const btnGuest=document.createElement('button');btnGuest.className='nav-btn';btnGuest.textContent='Se connecter / Créer un compte';btnGuest.onclick=()=>go('pg-auth');nav.appendChild(btnGuest);
+    } else {
+      // bouton mon espace toujours dispo
+      const btnSpace = document.createElement('button');
+      btnSpace.className = 'nav-btn';
+      btnSpace.textContent = '👤 ' + u.displayName;
+      btnSpace.onclick = () => go('pg-account');
+      nav.appendChild(btnSpace);
+      // bouton dashboard si admin ou superadmin
+      if(u.role === 'admin' || u.role === 'superadmin') {
+        const btnAdm = document.createElement('button');
+        btnAdm.className = 'nav-btn';
+        btnAdm.textContent = u.role === 'superadmin' ? '⭐ Dashboard' : '🔧 Dashboard';
+        btnAdm.onclick = () => { setupAdminUI(); goAdmin(); };
+        nav.appendChild(btnAdm);
+      }
+      // déconnexion
+      const btnOut = document.createElement('button');
+      btnOut.className = 'nav-btn';
+      btnOut.textContent = 'Déconnexion';
+      btnOut.onclick = doLogout;
+      nav.appendChild(btnOut);
+    }
+  }
+
+  // ─ nav bar mon espace
+  const accNav = document.getElementById('account-nav');
+  if(accNav) {
+    accNav.innerHTML = '';
+    const btnHome = document.createElement('button');
+    btnHome.className = 'nav-btn';
+    btnHome.textContent = '← Nouvelle commande';
+    btnHome.onclick = () => go('pg-home');
+    accNav.appendChild(btnHome);
+    if(u && (u.role === 'admin' || u.role === 'superadmin')) {
+      const btnAdm = document.createElement('button');
+      btnAdm.className = 'nav-btn';
+      btnAdm.textContent = u.role === 'superadmin' ? '⭐ Dashboard' : '🔧 Dashboard';
+      btnAdm.onclick = () => { setupAdminUI(); goAdmin(); };
+      accNav.appendChild(btnAdm);
+    }
+    const btnOut = document.createElement('button');
+    btnOut.className = 'nav-btn';
+    btnOut.textContent = 'Déconnexion';
+    btnOut.onclick = doLogout;
+    accNav.appendChild(btnOut);
+  }
+
+  // ─ page home : formulaire ou invite
+  const hGuest = document.getElementById('home-guest');
+  const hUser  = document.getElementById('home-user');
+  const lsub   = document.getElementById('home-lsub');
+  if(hGuest && hUser) {
+    if(u) {
+      hGuest.style.display = 'none';
+      hUser.style.display  = '';
+      if(lsub) lsub.textContent = 'Demandes de ressources';
+      const greet = document.getElementById('f-greeting');
+      if(greet) greet.innerHTML = 'Connecté en tant que <strong style="color:var(--pl)">' + u.displayName + '</strong> · ' + u.grade;
+      buildResList();
+    } else {
+      hGuest.style.display = '';
+      hUser.style.display  = 'none';
+    }
+  }
+}
+
+// ══ AUTH ══════════════════════════════════════════════════════════
+function authTab(t){
+  document.getElementById('auth-login').style.display    = t==='login'?'':'none';
+  document.getElementById('auth-register').style.display = t==='register'?'':'none';
+  document.getElementById('at-login').className    = 'auth-tab'+(t==='login'?' on':'');
+  document.getElementById('at-register').className = 'auth-tab'+(t==='register'?' on':'');
+  document.getElementById('auth-alert').innerHTML  = '';
+}
+
+function doLogin(){
+  const name = document.getElementById('l-name').value.trim();
+  const pw   = document.getElementById('l-pw').value;
+  const key  = name.toLowerCase().replace(/\s+/g,'_');
+  const users = loadUsers();
+  if(!name||!pw){ setAuthAlert('Remplissez tous les champs.'); return; }
+  if(!users[key]){ setAuthAlert('Compte introuvable.'); return; }
+  if(users[key].pwh !== simpleHash(pw)){ setAuthAlert('Mot de passe incorrect.'); return; }
+  const u = users[key];
+  saveSess({key, displayName:u.displayName, grade:u.grade, role:u.role||null});
+  document.getElementById('l-name').value = '';
+  document.getElementById('l-pw').value   = '';
+  // si admin/superadmin → dashboard, sinon → home
+  if(u.role === 'superadmin' || u.role === 'admin') {
+    setupAdminUI();
+    initUI();
+    goAdmin();
+  } else {
+    initUI();
+    go('pg-account');
+  }
+}
+
+function doRegister(){
+  const name  = document.getElementById('r-name').value.trim();
+  const grade = document.getElementById('r-grade').value;
+  const pw    = document.getElementById('r-pw').value;
+  const pw2   = document.getElementById('r-pw2').value;
+  if(!name||!grade||!pw){ setAuthAlert('Remplissez tous les champs.'); return; }
+  if(pw.length<4){ setAuthAlert('Mot de passe trop court (min. 4 caractères).'); return; }
+  if(pw!==pw2){ setAuthAlert('Les mots de passe ne correspondent pas.'); return; }
+  const key = name.toLowerCase().replace(/\s+/g,'_');
+  const users = loadUsers();
+  if(users[key]){ setAuthAlert('Un compte avec ce nom existe déjà.'); return; }
+  users[key] = {pwh:simpleHash(pw), displayName:name, grade, role:null};
+  saveUsers(users);
+  saveSess({key, displayName:name, grade, role:null});
+  document.getElementById('r-name').value  = '';
+  document.getElementById('r-grade').value = '';
+  document.getElementById('r-pw').value    = '';
+  document.getElementById('r-pw2').value   = '';
+  initUI();
+  go('pg-account');
+}
+
+function doLogout(){ clearSess(); initUI(); go('pg-auth'); }
+function setAuthAlert(msg){ document.getElementById('auth-alert').innerHTML='<div class="alert ar">'+msg+'</div>'; }
+
+// ══ AUTH ADMIN ════════════════════════════════════════════════════
+// Plus utilisé directement (login unifié), mais on garde doSALogin pour
+// le super-admin qui se connecte via son mot de passe fixe
+function doAdminLogin(){} // stub vide — login via doLogin()
+
+function doSALogin(){
+  const pw = document.getElementById('sa-pw')?.value;
+  if(!pw) return;
+  if(pw === SA_PW){
+    // créer/mettre à jour le compte superadmin en mémoire de session uniquement
+    document.getElementById('sa-pw').value = '';
+    saveSess({key:'__superadmin__', displayName:'Super-admin', grade:'—', role:'superadmin'});
+    setupAdminUI();
+    initUI();
+    goAdmin();
+  } else {
+    document.getElementById('adm-alert').innerHTML='<div class="alert ar">Mot de passe super-admin incorrect.</div>';
+  }
+}
+
+function setupAdminUI(){
+  const u = currentUser();
+  const role = u?.role||'';
+  const sub = document.getElementById('adm-sub');
+  if(sub) sub.textContent = role==='superadmin' ? 'Super-admin' : 'Récolteur';
+  const tp = document.getElementById('tab-prices');
+  const ta = document.getElementById('tab-admins');
+  if(tp) tp.style.display = role==='superadmin'?'':'none';
+  if(ta) ta.style.display = role==='superadmin'?'':'none';
+  const ts = document.getElementById('tab-scores');
+  if(ts) ts.style.display = role==='superadmin'?'':'none';
+}
+
+// ══ CODE SUPER-ADMIN ════════════════════════════════════════════
+function applySACode(){
+  const input = document.getElementById('sa-code-input');
+  const msg   = document.getElementById('sa-code-msg');
+  if(!input || !msg) return;
+  const code = input.value.trim();
+  if(!code){ msg.style.color='var(--red)'; msg.textContent='Entrez un code.'; return; }
+  if(code !== SA_PW){ msg.style.color='var(--red)'; msg.textContent='Code incorrect.'; return; }
+  // promouvoir en superadmin
+  const u = currentUser();
+  if(!u){ return; }
+  const users = loadUsers();
+  if(users[u.key]){
+    users[u.key].role = 'superadmin';
+    saveUsers(users);
+  }
+  saveSess({...u, role:'superadmin'});
+  input.value = '';
+  msg.style.color='var(--green)';
+  msg.textContent='✓ Rôle super-admin activé !';
+  setTimeout(()=>{ setupAdminUI(); initUI(); goAdmin(); }, 800);
+}
+
+// ══ FORMULAIRE ══════════════════════════════════════════════════
+// ══ FORMULAIRE ════════════════════════════════════════════════════
+function buildResList(){
+  const prices=loadPrices();
+  const el=document.getElementById('res-list');if(!el)return;
+  el.innerHTML=RES.map(r=>`
+    <div class="res-row">
+      <span class="res-label">
+        <span style="width:22px;text-align:center">${r.icon}</span>
+        ${r.label}
+        <span class="res-price">${prices[r.id]} ${CURRENCY}/u</span>
+      </span>
+      <div class="res-ctrl">
+        <button class="pm" onclick="adj('${r.id}',-1)">−</button>
+        <input type="number" id="q-${r.id}" value="0" min="0" step="1" oninput="updateTotal()"/>
+        <button class="pm" onclick="adj('${r.id}',1)">+</button>
+      </div>
+    </div>`).join('');
+  updateTotal();
+}
+function adj(id,d){
+  const e=document.getElementById('q-'+id);
+  e.value=Math.max(0,(parseInt(e.value)||0)+d);
+  updateTotal();
+}
+function calcTotal(){
+  const prices=loadPrices();
+  return RES.reduce((sum,r)=>{
+    const q=Math.max(0,parseInt(document.getElementById('q-'+r.id)?.value)||0);
+    return sum+(q*(prices[r.id]||1));
+  },0);
+}
+function updateTotal(){
+  const t=calcTotal();
+  document.getElementById('price-display').textContent=t+' '+CURRENCY;
+}
+function getSelectedRes(){
+  const prices=loadPrices();
+  return RES.map(r=>({...r,qte:Math.max(0,parseInt(document.getElementById('q-'+r.id)?.value)||0),price:prices[r.id]||1})).filter(r=>r.qte>0);
+}
+function fConfirm(){
+  const u=currentUser();if(!u){go('pg-auth');return;}
+  const ressources=getSelectedRes();
+  if(!ressources.length){alert('Indiquez au moins une ressource.');return;}
+  const total=calcTotal();
+  document.getElementById('modal-recap').innerHTML=ressources.map(r=>`
+    <div class="my-row">
+      <span style="font-size:13px;color:var(--tx2)">${r.icon} ${r.label} ×${r.qte}</span>
+      <span style="font-size:13px;font-weight:600;color:var(--tx)">${r.qte*r.price} ${CURRENCY}</span>
+    </div>`).join('');
+  document.getElementById('modal-price').textContent=total+' '+CURRENCY;
+  document.getElementById('modal-confirm').classList.add('on');
+}
+function closeModal(){document.getElementById('modal-confirm').classList.remove('on');}
+function fSubmit(){
+  closeModal();
+  const u=currentUser();if(!u)return;
+  const prices=loadPrices();
+  const ressources=getSelectedRes();
+  const total=calcTotal();
+  const cmd={
+    id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    userKey:u.key,displayName:u.displayName,grade:u.grade,
+    date:new Date().toLocaleString('fr-FR'),
+    ressources,totalPrice:total,statut:'awaiting-payment'
+  };
+  const all=loadCmds();all.push(cmd);saveCmds(all);
+  document.getElementById('f-recap').innerHTML=`
+    <div class="sec">Récapitulatif</div>
+    <div style="border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:.75rem">
+      ${ressources.map(r=>`<div class="my-row"><span style="font-size:13px;color:var(--tx2)">${r.icon} ${r.label} ×${r.qte}</span><span style="font-size:13px;font-weight:600;color:var(--gold)">${r.qte*r.price} ${CURRENCY}</span></div>`).join('')}
+    </div>
+    <div style="text-align:right;font-size:16px;font-weight:700;color:var(--gold);padding:0 14px">${total} ${CURRENCY}</div>`;
+  document.getElementById('f-s1').style.display='none';
+  document.getElementById('f-s2').style.display='';
+}
+function fReset(){
+  buildResList();
+  document.getElementById('f-s2').style.display='none';
+  document.getElementById('f-s1').style.display='';
+}
+
+// ══ MON ESPACE ════════════════════════════════════════════════════
+function renderAccount(){
+  const u=currentUser();if(!u)return;
+  initUI(); // refresh nav
+  const roleBadge = u.role==='superadmin'
+    ? '<span class="badge-sa" style="margin-left:8px">Super-admin</span>'
+    : u.role==='admin'
+      ? '<span class="badge-a" style="margin-left:8px">Admin</span>'
+      : '';
+  const hdr = document.getElementById('account-header');
+  hdr.innerHTML=`
+    <div class="avatar">${initials(u.displayName)}</div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px"><div style="font-size:15px;font-weight:600">${u.displayName}</div>${roleBadge}<div style="font-size:12px;color:var(--tx3);width:100%">${u.grade}</div></div>`;
+
+  // zone code super-admin si pas encore superadmin
+  const saZone = document.getElementById('sa-zone');
+  if(saZone) {
+    if(u.role !== 'superadmin') {
+      saZone.style.display = '';
+    } else {
+      saZone.style.display = 'none';
+    }
+  }
+  const all=loadCmds();
+  const mine=all.filter(c=>c.userKey===u.key).reverse();
+  const el=document.getElementById('my-orders');
+  if(!mine.length){el.innerHTML='<div class="empty">Vous n\'avez pas encore de commande.</div>';return;}
+  el.innerHTML=mine.map(c=>{
+    const st=STATUTS[c.statut]||STATUTS['awaiting-payment'];
+    return`<div class="cmd-acc" id="acc-${c.id}">
+      <div class="cmd-acc-head" onclick="toggleAcc('${c.id}')">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="stat-pill ${st.cls}"><span class="dot"></span>${st.icon} ${st.label}</span>
+          <span style="font-size:12px;color:var(--tx3)">${c.date}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:14px;font-weight:700;color:var(--gold)">${c.totalPrice} ${CURRENCY}</span>
+          <span class="chev">▼</span>
+        </div>
+      </div>
+      <div class="cmd-acc-body">
+        <div class="sbanner ${st.cls}" style="background:${sbbg(c.statut)};border-color:${sbborder(c.statut)}">
+          <span style="font-size:22px">${st.icon}</span>
+          <div>
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;opacity:.7;margin-bottom:2px">État</div>
+            <div style="font-size:15px;font-weight:700;color:${sbcolor(c.statut)}">${st.label}</div>
+            <div style="font-size:12px;opacity:.8;margin-top:2px;color:${sbcolor(c.statut)}">${st.desc}</div>
+          </div>
+        </div>
+        <div class="sec">Ressources demandées</div>
+        <div style="border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden">
+          ${c.ressources.map(r=>`<div class="my-row"><span style="font-size:13px;color:var(--tx2)">${r.icon} ${r.label} ×${r.qte}</span><span style="font-size:13px;font-weight:600;color:var(--gold)">${r.qte*(r.price||1)} ${CURRENCY}</span></div>`).join('')}
+          <div class="my-row" style="background:var(--bg3)"><span style="font-size:13px;font-weight:600;color:var(--tx)">Total</span><span style="font-size:14px;font-weight:800;color:var(--gold)">${c.totalPrice} ${CURRENCY}</span></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleAcc(id){document.getElementById('acc-'+id).classList.toggle('open');}
+function sbbg(s){return{'awaiting-payment':'rgba(245,158,11,.1)',pending:'rgba(78,76,98,.15)',progress:'rgba(251,191,36,.07)',done:'rgba(74,222,128,.07)',ready:'rgba(96,165,250,.07)',collected:'rgba(124,111,247,.08)'}[s]||'rgba(78,76,98,.15)'}
+function sbborder(s){return{'awaiting-payment':'rgba(245,158,11,.35)',pending:'rgba(139,137,160,.2)',progress:'rgba(251,191,36,.3)',done:'rgba(74,222,128,.3)',ready:'rgba(96,165,250,.3)',collected:'rgba(124,111,247,.3)'}[s]||'rgba(139,137,160,.2)'}
+function sbcolor(s){return{'awaiting-payment':'var(--gold)',pending:'var(--tx2)',progress:'var(--amber)',done:'var(--green)',ready:'var(--blue)',collected:'var(--pl)'}[s]||'var(--tx2)'}
+
+// ══ ADMIN ══════════════════════════════════════════════════════════
+function aTab(t){
+  ['tot','cmds','prices','admins','scores'].forEach(x=>{
+    document.getElementById('a-'+x).style.display=x===t?'':'none';
+    const el=document.getElementById('tab-'+x);
+    if(el)el.className='tab'+(x===t?' on':'');
+  });
+  if(t==='cmds')renderAdminCmds();
+  if(t==='prices')renderPrices();
+  if(t==='admins')renderAdminsList();
+  if(t==='scores')renderScores();
+}
+function renderAdmin(){aTab('tot');}
+
+function renderAdminTot(){
+  const all=loadCmds();
+  const tot={};RES.forEach(r=>tot[r.id]=0);
+  all.forEach(c=>c.ressources.forEach(r=>{tot[r.id]=(tot[r.id]||0)+r.qte;}));
+  const totalU=Object.values(tot).reduce((a,b)=>a+b,0);
+  const totalR=all.reduce((s,c)=>s+(c.totalPrice||0),0);
+  const counts={};Object.keys(STATUTS).forEach(k=>counts[k]=0);
+  all.forEach(c=>counts[c.statut]=(counts[c.statut]||0)+1);
+  document.getElementById('a-tot').innerHTML=`
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.25rem">
+      <span style="font-size:12px;color:var(--tx2);background:var(--bg3);border:0.5px solid var(--bd2);border-radius:20px;padding:3px 10px">${all.length} commande${all.length>1?'s':''} · ${totalR} ${CURRENCY}</span>
+      ${Object.entries(STATUTS).filter(([k])=>counts[k]>0).map(([k,v])=>`<span class="stat-pill ${v.cls}"><span class="dot"></span>${v.icon} ${v.label} · ${counts[k]}</span>`).join('')}
+    </div>
+    <div style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden">
+      ${RES.map(r=>{const v=tot[r.id];return`
+        <div class="res-row" style="${v===0?'opacity:.3':''}">
+          <span class="res-label"><span>${r.icon}</span>${r.label}</span>
+          <span style="font-size:17px;font-weight:700;color:${v>0?'var(--pl)':'var(--tx3)'}">${v}</span>
+        </div>`;}).join('')}
+    </div>`;
+}
+
+function renderAdminCmds(){
+  const q  = (document.getElementById('a-search')?.value||'').toLowerCase();
+  const sf = document.getElementById('a-filter')?.value||'all';
+  const u  = currentUser();
+  let all  = loadCmds();
+  if(q)          all = all.filter(c => c.displayName.toLowerCase().includes(q)||c.grade.toLowerCase().includes(q));
+  if(sf!=='all') all = all.filter(c => c.statut===sf);
+
+  const el = document.getElementById('a-cmds');
+
+  let html =
+    '<div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">' +
+      '<div class="sbar" style="flex:1;margin-bottom:0"><span class="ico">🔍</span>' +
+        '<input id="a-search" type="text" placeholder="Rechercher\u2026" oninput="renderAdminCmds()" value="' + q.replace(/"/g,'&quot;') + '"/>' +
+      '</div>' +
+      '<select id="a-filter" class="stat-sel" style="height:38px;padding:0 10px" onchange="renderAdminCmds()">' +
+        '<option value="all">Tous les \u00e9tats</option>' +
+        Object.entries(STATUTS).map(function(e){
+          return '<option value="'+e[0]+'"'+(sf===e[0]?' selected':'')+'>'+e[1].icon+' '+e[1].label+'</option>';
+        }).join('') +
+      '</select>' +
+    '</div>';
+
+  if(!all.length){
+    html += '<div class="empty">Aucune commande'+(q||sf!=='all'?' pour ce filtre':' enregistr\u00e9e')+'.</div>';
+    el.innerHTML = html;
+    return;
+  }
+
+  html += '<div style="display:flex;flex-direction:column;gap:8px">';
+
+  [...all].reverse().forEach(function(c){
+    var st = STATUTS[c.statut]||STATUTS['awaiting-payment'];
+    var canTake = (u&&(u.role==='admin'||u.role==='superadmin'))&&!c.takenBy;
+
+    var takenHtml = c.takenBy
+      ? '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--pl)"><span style="width:6px;height:6px;border-radius:50%;background:var(--pl);flex-shrink:0;display:inline-block"></span>'+c.takenBy+'</span>'
+      : (canTake
+        ? '<button class="btn bp" style="height:26px;font-size:11px;padding:0 10px;border-radius:6px" data-take="'+c.id+'">Prendre en charge</button>'
+        : '<span style="font-size:11px;color:var(--tx3)">Non prise</span>');
+
+    var statOpts = Object.entries(STATUTS).map(function(e){
+      return '<option value="'+e[0]+'"'+(c.statut===e[0]?' selected':'')+'>'+e[1].icon+' '+e[1].label+'</option>';
+    }).join('');
+
+    var resHtml = c.ressources.map(function(r){
+      return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--bg3);border:0.5px solid var(--bd2);border-radius:5px;padding:2px 7px;white-space:nowrap">'+r.icon+' '+r.label+' <strong style="color:var(--pl)">×'+r.qte+'</strong></span>';
+    }).join('');
+
+    html +=
+      '<div style="background:var(--bg2);border:0.5px solid var(--bd);border-radius:var(--rl);padding:12px 14px">' +
+        // ligne 1 : identité + statut + prise en charge + date
+        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
+          '<div style="display:flex;align-items:center;gap:10px">' +
+            '<div style="width:34px;height:34px;border-radius:50%;background:var(--pg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--pl);flex-shrink:0">'+
+              c.displayName.trim().split(/\s+/).map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase()+
+            '</div>'+
+            '<div>'+
+              '<div style="font-size:13px;font-weight:600;color:var(--tx)">'+c.displayName+'</div>'+
+              '<div style="font-size:11px;color:var(--tx3)">'+c.grade+' · '+c.date+'</div>'+
+            '</div>'+
+          '</div>'+
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+            '<span style="font-size:14px;font-weight:800;color:var(--gold)">'+c.totalPrice+' '+CURRENCY+'</span>'+
+            '<select class="stat-sel" data-statut="'+c.id+'">'+statOpts+'</select>'+
+            takenHtml+
+          '</div>'+
+        '</div>'+
+        // ligne 2 : ressources
+        '<div style="display:flex;flex-wrap:wrap;gap:5px">'+resHtml+'</div>'+
+      '</div>';
+  });
+
+  html += '</div>';
+  el.innerHTML = html;
+
+  el.querySelectorAll('[data-take]').forEach(function(btn){
+    btn.addEventListener('click', function(){ takeCharge(btn.dataset.take); });
+  });
+  el.querySelectorAll('[data-statut]').forEach(function(sel){
+    sel.addEventListener('change', function(){ changeStatut(sel.dataset.statut, sel.value); });
+  });
+}
+
+function changeStatut(id,s){
+  const all=loadCmds();const i=all.findIndex(c=>c.id===id);if(i===-1)return;
+  all[i].statut=s;saveCmds(all);renderAdminTot();
+}
+
+// ══ PRICES (super-admin) ══════════════════════════════════════════
+function renderPrices(){
+  const prices=loadPrices();
+  document.getElementById('a-prices').innerHTML=`
+    <div style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Modifiez le prix unitaire (en ${CURRENCY}) de chaque ressource. Les nouvelles commandes utiliseront ces tarifs.</div>
+    <div style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden;margin-bottom:1rem">
+      <table class="price-tbl">
+        ${RES.map(r=>`<tr>
+          <td style="color:var(--tx)">${r.icon} ${r.label}</td>
+          <td style="text-align:right">
+            <input type="number" id="price-${r.id}" value="${prices[r.id]||1}" min="0" step="1"/>
+          </td>
+        </tr>`).join('')}
+      </table>
+    </div>
+    <button class="btn bp" onclick="savePricesUI()">Enregistrer les prix</button>
+    <span id="price-saved" style="font-size:12px;color:var(--green);margin-left:12px;display:none">✓ Enregistré</span>`;
+}
+function savePricesUI(){
+  const p={};
+  RES.forEach(r=>{p[r.id]=Math.max(0,parseInt(document.getElementById('price-'+r.id)?.value)||0);});
+  savePrices(p);
+  const s=document.getElementById('price-saved');s.style.display='';
+  setTimeout(()=>s.style.display='none',2000);
+}
+
+// ══ ADMINS (super-admin) ══════════════════════════════════════════
+function userInitials(name){return name.trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase();}
+
+function renderAdminsList(){
+  const users = loadUsers();
+  const admins = [];
+  const nonAdmins = [];
+  Object.keys(users).forEach(k => {
+    if(users[k].role === 'superadmin') return; // les super-admins sont intouchables
+    if(users[k].role === 'admin') admins.push(k);
+    else nonAdmins.push(k);
+  });
+
+  function buildList(keys, containerId){
+    const el = document.getElementById(containerId);
+    if(!keys.length){
+      el.innerHTML = '<div class="empty" style="padding:1.25rem">Aucun élément.</div>';
+      return;
+    }
+    el.innerHTML = '';
+    keys.forEach(k => {
+      const u = users[k];
+      const row = document.createElement('div');
+      row.className = 'admin-row';
+      row.style.cssText = 'cursor:pointer;transition:background .15s';
+      row.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px">' +
+          '<div style="width:30px;height:30px;border-radius:50%;background:var(--pg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--pl);flex-shrink:0">' + userInitials(u.displayName) + '</div>' +
+          '<div>' +
+            '<div style="font-size:13px;color:var(--tx);font-weight:500">' + u.displayName + '</div>' +
+            '<div style="font-size:11px;color:var(--tx3)">' + u.grade + '</div>' +
+          '</div>' +
+        '</div>' +
+        (containerId === 'list-members'
+          ? '<span style="font-size:11px;color:var(--p);background:var(--pg);border:0.5px solid rgba(124,111,247,.3);border-radius:4px;padding:3px 8px;flex-shrink:0">+ Admin</span>'
+          : '<span class="badge-a" style="flex-shrink:0">Admin ✕</span>');
+
+      if(containerId === 'list-members'){
+        row.addEventListener('mouseover', () => row.style.background = 'var(--bg3)');
+        row.addEventListener('mouseout',  () => row.style.background = '');
+        row.addEventListener('click', () => doPromote(k));
+      } else {
+        row.addEventListener('mouseover', () => row.style.background = 'rgba(248,113,113,.07)');
+        row.addEventListener('mouseout',  () => row.style.background = '');
+        row.addEventListener('click', () => doDemote(k));
+      }
+      el.appendChild(row);
+    });
+  }
+
+  document.getElementById('a-admins').innerHTML =
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">' +
+      '<div>' +
+        '<div class="sec" style="margin-bottom:.75rem">👥 Membres — cliquer pour promouvoir</div>' +
+        '<div id="list-members" style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden"></div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="sec" style="margin-bottom:.75rem">🔧 Admins actuels — cliquer pour retirer</div>' +
+        '<div id="list-admins" style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden"></div>' +
+      '</div>' +
+    '</div>';
+
+  buildList(nonAdmins, 'list-members');
+  buildList(admins,    'list-admins');
+}
+
+function doPromote(key){
+  const users = loadUsers();
+  if(!users[key]) return;
+  users[key].role = 'admin';
+  saveUsers(users);
+  // rafraîchir la session si c'est l'utilisateur courant
+  const u = currentUser();
+  if(u && u.key === key){ saveSess({...u, role:'admin'}); }
+  renderAdminsList();
+}
+function doDemote(key){
+  const users = loadUsers();
+  if(!users[key]) return;
+  showConfirmDemote(key, users[key].displayName, users[key]);
+}
+function showConfirmDemote(key, name, userData){
+  // remove any existing confirm bar
+  const old = document.getElementById('demote-confirm-bar');
+  if(old) old.remove();
+  const bar = document.createElement('div');
+  bar.id = 'demote-confirm-bar';
+  bar.style.cssText = 'background:rgba(248,113,113,.1);border:0.5px solid rgba(248,113,113,.4);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;flex-wrap:wrap';
+  bar.innerHTML =
+    '<span style="font-size:13px;color:var(--tx)">Retirer le rôle admin à <strong>' + name + '</strong> ?</span>' +
+    '<div style="display:flex;gap:8px">' +
+      '<button id="demote-cancel" style="height:30px;padding:0 12px;border-radius:6px;border:0.5px solid var(--bd2);background:transparent;color:var(--tx2);cursor:pointer;font-size:12px">Annuler</button>' +
+      '<button id="demote-ok"     style="height:30px;padding:0 12px;border-radius:6px;border:none;background:var(--red);color:#fff;cursor:pointer;font-size:12px;font-weight:600">Retirer</button>' +
+    '</div>';
+  document.getElementById('a-admins').after(bar);
+  document.getElementById('demote-cancel').onclick = () => bar.remove();
+  document.getElementById('demote-ok').onclick = () => {
+    bar.remove();
+    const users = loadUsers();
+    if(!users[key]) return;
+    delete users[key].role;
+    saveUsers(users);
+    // rafraîchir la session si c'est l'utilisateur courant
+    const u = currentUser();
+    if(u && u.key === key){ saveSess({...u, role:null}); }
+    renderAdminsList();
+  };
+}
+
+// ══ PRISE EN CHARGE ══════════════════════════════════════════════
+function takeCharge(cmdId){
+  const u = currentUser();
+  if(!u || (u.role !== 'admin' && u.role !== 'superadmin')) return;
+  const all = loadCmds();
+  const idx = all.findIndex(c => c.id === cmdId);
+  if(idx === -1) return;
+  if(all[idx].takenBy) return; // déjà prise
+  all[idx].takenBy = u.displayName;
+  all[idx].takenKey = u.key;
+  // passer automatiquement en "en cours" si encore en attente
+  if(all[idx].statut === 'pending') all[idx].statut = 'progress';
+  saveCmds(all);
+  renderAdminCmds();
+  renderAdminTot();
+}
+
+// ══ SCORES (super-admin) ══════════════════════════════════════════
+function renderScores(){
+  const all   = loadCmds();
+  const el    = document.getElementById('a-scores');
+  const stats = {};
+
+  all.forEach(function(c){
+    if(!c.takenBy) return;
+    var k = c.takenKey || c.takenBy;
+    if(!stats[k]) stats[k] = {name: c.takenBy, cmds: [], resByRes: {}};
+    stats[k].cmds.push(c);
+    c.ressources.forEach(function(r){
+      stats[k].resByRes[r.id] = stats[k].resByRes[r.id] || {label: r.label, icon: r.icon, total: 0};
+      stats[k].resByRes[r.id].total += r.qte;
+    });
+  });
+
+  var rows = Object.values(stats).sort(function(a,b){ return b.cmds.length - a.cmds.length; });
+
+  if(!rows.length){
+    el.innerHTML = '<div class="empty">Aucune commande prise en charge pour le moment.</div>';
+    return;
+  }
+
+  var html = '<div style="display:flex;flex-direction:column;gap:12px">';
+
+  rows.forEach(function(r, i){
+    var medal = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : '#'+(i+1);
+    var resRows = Object.values(r.resByRes).sort(function(a,b){ return b.total - a.total; });
+    var resHtml = resRows.map(function(res){
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--bd)">' +
+        '<span style="font-size:12px;color:var(--tx2)">' + res.icon + ' ' + res.label + '</span>' +
+        '<span style="font-size:13px;font-weight:700;color:var(--pl)">' + res.total + '</span>' +
+      '</div>';
+    }).join('');
+
+    var cmdCards = r.cmds.map(function(c){
+      var resDetail = c.ressources.map(function(res){
+        return '<span class="tag">' + res.icon + ' ' + res.label + ' ×' + res.qte + '</span>';
+      }).join('');
+      return '<div style="background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--r);padding:9px 12px;margin-bottom:6px">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+          '<span style="font-size:12px;font-weight:600;color:var(--tx)">' + c.displayName + ' <span style="font-weight:400;color:var(--tx3)">· ' + c.grade + '</span></span>' +
+          '<span style="font-size:12px;font-weight:700;color:var(--gold)">' + c.totalPrice + ' ' + CURRENCY + '</span>' +
+        '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">' + resDetail + '</div>' +
+        '<div style="font-size:10px;color:var(--tx3)">' + c.date + '</div>' +
+      '</div>';
+    }).join('');
+
+    html +=
+      '<div style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden">' +
+        // header récolteur
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg3);cursor:pointer" data-stoggle="sc-' + i + '">' +
+          '<div style="display:flex;align-items:center;gap:12px">' +
+            '<span style="font-size:22px">' + medal + '</span>' +
+            '<div>' +
+              '<div style="font-size:14px;font-weight:600;color:var(--tx)">' + r.name + '</div>' +
+              '<div style="font-size:11px;color:var(--tx3)">' + r.cmds.length + ' commande' + (r.cmds.length>1?'s':'') + ' prise' + (r.cmds.length>1?'s':'') + ' en charge</div>' +
+            '</div>' +
+          '</div>' +
+          '<span style="font-size:12px;color:var(--tx3)">▼</span>' +
+        '</div>' +
+        // body dépliable
+        '<div id="sc-' + i + '" style="display:none;padding:14px 16px">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">' +
+            // ressources individuelles
+            '<div>' +
+              '<div class="sec" style="margin-bottom:.5rem">Ressources récoltées</div>' +
+              (resRows.length ? '<div style="border:0.5px solid var(--bd);border-radius:var(--r);padding:4px 12px">' + resHtml + '</div>'
+                              : '<div style="font-size:12px;color:var(--tx3)">Aucune donnée.</div>') +
+            '</div>' +
+            // commandes détail
+            '<div>' +
+              '<div class="sec" style="margin-bottom:.5rem">Commandes traitées</div>' +
+              cmdCards +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  });
+
+  html += '</div>';
+  el.innerHTML = html;
+  el.querySelectorAll('[data-stoggle]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var target = document.getElementById(btn.dataset.stoggle);
+      if(target) target.style.display = target.style.display === 'none' ? '' : 'none';
+    });
+  });
+}
+
+
+// ══ EXPORT ════════════════════════════════════════════════════════
+function exportXl(){
+  const all=loadCmds();if(!all.length){alert('Aucune commande à exporter.');return;}
+  const wb=XLSX.utils.book_new();
+  const rows=[['Nom','Grade','Ressource','Quantité','Prix unit.','Sous-total','Total commande','État','Date']];
+  all.forEach(c=>c.ressources.forEach((r,i)=>rows.push([
+    c.displayName,c.grade,r.label,r.qte,r.price||1,r.qte*(r.price||1),
+    i===0?c.totalPrice:'',STATUTS[c.statut]?.label||c.statut,c.date
+  ])));
+  const ws1=XLSX.utils.aoa_to_sheet(rows);
+  ws1['!cols']=[{wch:22},{wch:18},{wch:28},{wch:8},{wch:10},{wch:10},{wch:14},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,ws1,'Commandes');
+  const tot={};RES.forEach(r=>tot[r.id]=0);
+  all.forEach(c=>c.ressources.forEach(r=>{tot[r.id]=(tot[r.id]||0)+r.qte;}));
+  const ws2=XLSX.utils.aoa_to_sheet([['Ressource','Total'],...RES.map(r=>[r.label,tot[r.id]])]);
+  ws2['!cols']=[{wch:28},{wch:12}];
+  XLSX.utils.book_append_sheet(wb,ws2,'Totaux');
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  const url=URL.createObjectURL(new Blob([buf],{type:'application/octet-stream'}));
+  const a=document.createElement('a');a.href=url;a.download=`CommandePL_${new Date().toISOString().split('T')[0]}.xlsx`;a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ══ INIT ══════════════════════════════════════════════════════════
+document.getElementById('modal-confirm').addEventListener('click', e => {
+  if(e.target === e.currentTarget) closeModal();
+});
+
+initUI();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</body>
+</html>
