@@ -195,7 +195,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-
           <select id="r-grade">
             <option value="">— Sélectionner —</option>
             <option>Genin</option><option>Chunin</option><option>Kakunin</option>
-            <option>Tokubetsu Jonin</option><option>Jonin</option>
+            <option>Tokubetsu Chunin</option><option>Jonin</option>
           </select>
         </div>
         <div class="field"><label>Mot de passe</label><input id="r-pw" type="password" placeholder="minimum 4 caractères"/></div>
@@ -262,15 +262,28 @@ body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-
   </div>
 </div>
 
-<script>
-// ══ CONFIG ══════════════════════════════════════════════════════
-const SA_PW     = 'superadmin2025';
-const SK_CMDS   = 'gf_cmds_v7';
-const SK_USERS  = 'gf_users_v7';
-const SK_SESS   = 'gf_session_v7';
-const SK_PRICES = 'gf_prices_v7';
-const SK_ADMINS = 'gf_admins_v7';
-const CURRENCY  = 'Ryos';
+<script type="module">
+
+// ══ FIREBASE INIT ═════════════════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, onSnapshot, addDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBw7doThuYtBRTeMnJ5SJVl5-BvcftCF5s",
+  authDomain: "commande-pl.firebaseapp.com",
+  projectId: "commande-pl",
+  storageBucket: "commande-pl.firebasestorage.app",
+  messagingSenderId: "92166195051",
+  appId: "1:92166195051:web:e6f6888f623d6e5a546e2e"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ══ CONFIG ═════════════════════════════════════════════════════════
+const SA_PW    = 'superadmin2025';
+const SK_SESS  = 'gf_session_v7';
+const CURRENCY = 'Ryos';
 
 const RES = [
   {id:'fleur',     label:'Fleur de vie',          icon:'🌸'},
@@ -294,757 +307,477 @@ const STATUTS = {
   collected:          {label:'Récupéré',               icon:'🎯',cls:'s-collected',        desc:'Commande clôturée. Merci !'},
 };
 
-// ══ STORAGE ══════════════════════════════════════════════════════
-const loadCmds   = () => {try{return JSON.parse(localStorage.getItem(SK_CMDS))||[]}catch{return[]}};
-const saveCmds   = d  => localStorage.setItem(SK_CMDS, JSON.stringify(d));
-const loadUsers  = () => {try{return JSON.parse(localStorage.getItem(SK_USERS))||{}}catch{return{}}};
-const saveUsers  = d  => localStorage.setItem(SK_USERS, JSON.stringify(d));
-const loadSess   = () => {try{return JSON.parse(sessionStorage.getItem(SK_SESS))||null}catch{return null}};
-const saveSess   = u  => sessionStorage.setItem(SK_SESS, JSON.stringify(u));
-const clearSess  = () => sessionStorage.removeItem(SK_SESS);
-const loadAdmins = () => {try{return JSON.parse(localStorage.getItem(SK_ADMINS))||[]}catch{return[]}};
-const saveAdmins = d  => localStorage.setItem(SK_ADMINS, JSON.stringify(d));
+// ══ SESSION (locale) ═══════════════════════════════════════════════
+const loadSess  = () => { try{return JSON.parse(sessionStorage.getItem(SK_SESS))||null}catch{return null} };
+const saveSess  = u  => sessionStorage.setItem(SK_SESS, JSON.stringify(u));
+const clearSess = () => sessionStorage.removeItem(SK_SESS);
 
-function loadPrices() {
-  try {
-    const p = JSON.parse(localStorage.getItem(SK_PRICES));
-    if(p) return p;
-  } catch{}
-  const def = {}; RES.forEach(r => def[r.id] = 1);
+// ══ FIREBASE HELPERS ═══════════════════════════════════════════════
+async function fbGetUser(key) {
+  const snap = await getDoc(doc(db,'users', key));
+  return snap.exists() ? snap.data() : null;
+}
+async function fbSaveUser(key, data) {
+  await setDoc(doc(db,'users', key), data, {merge:true});
+}
+async function fbLoadUsers() {
+  const snap = await getDocs(collection(db,'users'));
+  const out = {};
+  snap.forEach(d => out[d.id] = d.data());
+  return out;
+}
+async function fbLoadCmds() {
+  const snap = await getDocs(query(collection(db,'commandes'), orderBy('ts','asc')));
+  const out = [];
+  snap.forEach(d => out.push({...d.data(), id: d.id}));
+  return out;
+}
+async function fbSaveCmd(cmd) {
+  const {id, ...data} = cmd;
+  if(id) { await setDoc(doc(db,'commandes', id), data, {merge:true}); return id; }
+  const ref = await addDoc(collection(db,'commandes'), data);
+  return ref.id;
+}
+async function fbUpdateCmd(id, fields) {
+  await updateDoc(doc(db,'commandes', id), fields);
+}
+async function fbGetPrices() {
+  const snap = await getDoc(doc(db,'config','prices'));
+  if(snap.exists()) return snap.data();
+  const def = {}; RES.forEach(r => def[r.id]=1);
   return def;
 }
-function savePrices(p) { localStorage.setItem(SK_PRICES, JSON.stringify(p)); }
+async function fbSavePrices(p) {
+  await setDoc(doc(db,'config','prices'), p);
+}
 
+// ══ UTILS ═════════════════════════════════════════════════════════
 function simpleHash(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193);}return(h>>>0).toString(16);}
 function initials(name){return name.trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase();}
+function userInitials(name){return initials(name);}
 
-// ══ NAV ══════════════════════════════════════════════════════════
+// ══ NAV ═══════════════════════════════════════════════════════════
 function go(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
   const el = document.getElementById(id);
   if(el) el.classList.add('on');
-  window.scrollTo(0, 0);
-  if(id === 'pg-account') renderAccount();
-  if(id === 'pg-admin') { renderAdminTot(); }
+  window.scrollTo(0,0);
+  if(id==='pg-account') renderAccount();
+  if(id==='pg-admin')   renderAdminTot();
 }
-function goAdmin(){ go('pg-admin'); renderAdmin(); }
+function goAdmin(){ go('pg-admin'); }
 function currentUser(){ return loadSess(); }
 
-// ══ INIT UI ══════════════════════════════════════════════════════
+// ══ INIT UI ═══════════════════════════════════════════════════════
 function initUI() {
   const u = currentUser();
-
-  // ─ nav bar page home
   const nav = document.getElementById('nav-btns');
   if(nav) {
     nav.innerHTML = '';
     if(!u) {
       const btnGuest=document.createElement('button');btnGuest.className='nav-btn';btnGuest.textContent='Se connecter / Créer un compte';btnGuest.onclick=()=>go('pg-auth');nav.appendChild(btnGuest);
     } else {
-      // bouton mon espace toujours dispo
-      const btnSpace = document.createElement('button');
-      btnSpace.className = 'nav-btn';
-      btnSpace.textContent = '👤 ' + u.displayName;
-      btnSpace.onclick = () => go('pg-account');
-      nav.appendChild(btnSpace);
-      // bouton dashboard si admin ou superadmin
-      if(u.role === 'admin' || u.role === 'superadmin') {
-        const btnAdm = document.createElement('button');
-        btnAdm.className = 'nav-btn';
-        btnAdm.textContent = u.role === 'superadmin' ? '⭐ Dashboard' : '🔧 Dashboard';
-        btnAdm.onclick = () => { setupAdminUI(); goAdmin(); };
-        nav.appendChild(btnAdm);
+      const btnSpace=document.createElement('button');btnSpace.className='nav-btn';btnSpace.textContent='👤 '+u.displayName;btnSpace.onclick=()=>go('pg-account');nav.appendChild(btnSpace);
+      if(u.role==='admin'||u.role==='superadmin'){
+        const btnAdm=document.createElement('button');btnAdm.className='nav-btn';btnAdm.textContent=u.role==='superadmin'?'⭐ Dashboard':'🔧 Dashboard';btnAdm.onclick=()=>{setupAdminUI();goAdmin();};nav.appendChild(btnAdm);
       }
-      // déconnexion
-      const btnOut = document.createElement('button');
-      btnOut.className = 'nav-btn';
-      btnOut.textContent = 'Déconnexion';
-      btnOut.onclick = doLogout;
-      nav.appendChild(btnOut);
+      const btnOut=document.createElement('button');btnOut.className='nav-btn';btnOut.textContent='Déconnexion';btnOut.onclick=doLogout;nav.appendChild(btnOut);
     }
   }
-
-  // ─ nav bar mon espace
   const accNav = document.getElementById('account-nav');
   if(accNav) {
-    accNav.innerHTML = '';
-    const btnHome = document.createElement('button');
-    btnHome.className = 'nav-btn';
-    btnHome.textContent = '← Nouvelle commande';
-    btnHome.onclick = () => go('pg-home');
-    accNav.appendChild(btnHome);
-    if(u && (u.role === 'admin' || u.role === 'superadmin')) {
-      const btnAdm = document.createElement('button');
-      btnAdm.className = 'nav-btn';
-      btnAdm.textContent = u.role === 'superadmin' ? '⭐ Dashboard' : '🔧 Dashboard';
-      btnAdm.onclick = () => { setupAdminUI(); goAdmin(); };
-      accNav.appendChild(btnAdm);
+    accNav.innerHTML='';
+    const btnHome=document.createElement('button');btnHome.className='nav-btn';btnHome.textContent='← Nouvelle commande';btnHome.onclick=()=>go('pg-home');accNav.appendChild(btnHome);
+    if(u&&(u.role==='admin'||u.role==='superadmin')){
+      const btnAdm=document.createElement('button');btnAdm.className='nav-btn';btnAdm.textContent=u.role==='superadmin'?'⭐ Dashboard':'🔧 Dashboard';btnAdm.onclick=()=>{setupAdminUI();goAdmin();};accNav.appendChild(btnAdm);
     }
-    const btnOut = document.createElement('button');
-    btnOut.className = 'nav-btn';
-    btnOut.textContent = 'Déconnexion';
-    btnOut.onclick = doLogout;
-    accNav.appendChild(btnOut);
+    const btnOut=document.createElement('button');btnOut.className='nav-btn';btnOut.textContent='Déconnexion';btnOut.onclick=doLogout;accNav.appendChild(btnOut);
   }
-
-  // ─ page home : formulaire ou invite
-  const hGuest = document.getElementById('home-guest');
-  const hUser  = document.getElementById('home-user');
-  const lsub   = document.getElementById('home-lsub');
-  if(hGuest && hUser) {
-    if(u) {
-      hGuest.style.display = 'none';
-      hUser.style.display  = '';
-      if(lsub) lsub.textContent = 'Demandes de ressources';
-      const greet = document.getElementById('f-greeting');
-      if(greet) greet.innerHTML = 'Connecté en tant que <strong style="color:var(--pl)">' + u.displayName + '</strong> · ' + u.grade;
-      buildResList();
-    } else {
-      hGuest.style.display = '';
-      hUser.style.display  = 'none';
-    }
+  const hGuest=document.getElementById('home-guest');
+  const hUser=document.getElementById('home-user');
+  if(hGuest&&hUser){
+    if(u){hGuest.style.display='none';hUser.style.display='';const g=document.getElementById('f-greeting');if(g)g.innerHTML='Connecté en tant que <strong style="color:var(--pl)">'+u.displayName+'</strong> · '+u.grade;buildResList();}
+    else{hGuest.style.display='';hUser.style.display='none';}
   }
 }
 
 // ══ AUTH ══════════════════════════════════════════════════════════
 function authTab(t){
-  document.getElementById('auth-login').style.display    = t==='login'?'':'none';
-  document.getElementById('auth-register').style.display = t==='register'?'':'none';
-  document.getElementById('at-login').className    = 'auth-tab'+(t==='login'?' on':'');
-  document.getElementById('at-register').className = 'auth-tab'+(t==='register'?' on':'');
-  document.getElementById('auth-alert').innerHTML  = '';
+  document.getElementById('auth-login').style.display=t==='login'?'':'none';
+  document.getElementById('auth-register').style.display=t==='register'?'':'none';
+  document.getElementById('at-login').className='auth-tab'+(t==='login'?' on':'');
+  document.getElementById('at-register').className='auth-tab'+(t==='register'?' on':'');
+  document.getElementById('auth-alert').innerHTML='';
 }
 
-function doLogin(){
-  const name = document.getElementById('l-name').value.trim();
-  const pw   = document.getElementById('l-pw').value;
-  const key  = name.toLowerCase().replace(/\s+/g,'_');
-  const users = loadUsers();
-  if(!name||!pw){ setAuthAlert('Remplissez tous les champs.'); return; }
-  if(!users[key]){ setAuthAlert('Compte introuvable.'); return; }
-  if(users[key].pwh !== simpleHash(pw)){ setAuthAlert('Mot de passe incorrect.'); return; }
-  const u = users[key];
-  saveSess({key, displayName:u.displayName, grade:u.grade, role:u.role||null});
-  document.getElementById('l-name').value = '';
-  document.getElementById('l-pw').value   = '';
-  // si admin/superadmin → dashboard, sinon → home
-  if(u.role === 'superadmin' || u.role === 'admin') {
-    setupAdminUI();
-    initUI();
-    goAdmin();
-  } else {
-    initUI();
-    go('pg-account');
-  }
+async function doLogin(){
+  const name=document.getElementById('l-name').value.trim();
+  const pw=document.getElementById('l-pw').value;
+  const key=name.toLowerCase().replace(/\s+/g,'_');
+  if(!name||!pw){setAuthAlert('Remplissez tous les champs.');return;}
+  showLoading('auth-login');
+  const u = await fbGetUser(key);
+  hideLoading('auth-login');
+  if(!u){setAuthAlert('Compte introuvable.');return;}
+  if(u.pwh!==simpleHash(pw)){setAuthAlert('Mot de passe incorrect.');return;}
+  saveSess({key,displayName:u.displayName,grade:u.grade,role:u.role||null});
+  document.getElementById('l-name').value='';document.getElementById('l-pw').value='';
+  if(u.role==='admin'||u.role==='superadmin'){setupAdminUI();initUI();goAdmin();}
+  else{initUI();go('pg-account');}
 }
 
-function doRegister(){
-  const name  = document.getElementById('r-name').value.trim();
-  const grade = document.getElementById('r-grade').value;
-  const pw    = document.getElementById('r-pw').value;
-  const pw2   = document.getElementById('r-pw2').value;
-  if(!name||!grade||!pw){ setAuthAlert('Remplissez tous les champs.'); return; }
-  if(pw.length<4){ setAuthAlert('Mot de passe trop court (min. 4 caractères).'); return; }
-  if(pw!==pw2){ setAuthAlert('Les mots de passe ne correspondent pas.'); return; }
-  const key = name.toLowerCase().replace(/\s+/g,'_');
-  const users = loadUsers();
-  if(users[key]){ setAuthAlert('Un compte avec ce nom existe déjà.'); return; }
-  users[key] = {pwh:simpleHash(pw), displayName:name, grade, role:null};
-  saveUsers(users);
-  saveSess({key, displayName:name, grade, role:null});
-  document.getElementById('r-name').value  = '';
-  document.getElementById('r-grade').value = '';
-  document.getElementById('r-pw').value    = '';
-  document.getElementById('r-pw2').value   = '';
-  initUI();
-  go('pg-account');
+async function doRegister(){
+  const name=document.getElementById('r-name').value.trim();
+  const grade=document.getElementById('r-grade').value;
+  const pw=document.getElementById('r-pw').value;
+  const pw2=document.getElementById('r-pw2').value;
+  if(!name||!grade||!pw){setAuthAlert('Remplissez tous les champs.');return;}
+  if(pw.length<4){setAuthAlert('Mot de passe trop court.');return;}
+  if(pw!==pw2){setAuthAlert('Les mots de passe ne correspondent pas.');return;}
+  const key=name.toLowerCase().replace(/\s+/g,'_');
+  showLoading('auth-register');
+  const existing=await fbGetUser(key);
+  if(existing){hideLoading('auth-register');setAuthAlert('Un compte avec ce nom existe déjà.');return;}
+  const userData={pwh:simpleHash(pw),displayName:name,grade,role:null};
+  await fbSaveUser(key,userData);
+  hideLoading('auth-register');
+  saveSess({key,displayName:name,grade,role:null});
+  document.getElementById('r-name').value='';document.getElementById('r-grade').value='';
+  document.getElementById('r-pw').value='';document.getElementById('r-pw2').value='';
+  initUI();go('pg-account');
 }
 
-function doLogout(){ clearSess(); initUI(); go('pg-auth'); }
-function setAuthAlert(msg){ document.getElementById('auth-alert').innerHTML='<div class="alert ar">'+msg+'</div>'; }
+function doLogout(){clearSess();initUI();go('pg-auth');}
+function setAuthAlert(msg){document.getElementById('auth-alert').innerHTML='<div class="alert ar">'+msg+'</div>';}
 
-// ══ AUTH ADMIN ════════════════════════════════════════════════════
-// Plus utilisé directement (login unifié), mais on garde doSALogin pour
-// le super-admin qui se connecte via son mot de passe fixe
-function doAdminLogin(){} // stub vide — login via doLogin()
-
-function doSALogin(){
-  const pw = document.getElementById('sa-pw')?.value;
-  if(!pw) return;
-  if(pw === SA_PW){
-    // créer/mettre à jour le compte superadmin en mémoire de session uniquement
-    document.getElementById('sa-pw').value = '';
-    saveSess({key:'__superadmin__', displayName:'Super-admin', grade:'—', role:'superadmin'});
-    setupAdminUI();
-    initUI();
-    goAdmin();
+// ══ ADMIN AUTH ════════════════════════════════════════════════════
+async function doSALogin(){
+  const pw=document.getElementById('sa-pw')?.value;
+  if(!pw)return;
+  if(pw===SA_PW){
+    document.getElementById('sa-pw').value='';
+    saveSess({key:'__superadmin__',displayName:'Super-admin',grade:'—',role:'superadmin'});
+    setupAdminUI();initUI();goAdmin();
   } else {
     document.getElementById('adm-alert').innerHTML='<div class="alert ar">Mot de passe super-admin incorrect.</div>';
   }
 }
-
 function setupAdminUI(){
-  const u = currentUser();
-  const role = u?.role||'';
-  const sub = document.getElementById('adm-sub');
-  if(sub) sub.textContent = role==='superadmin' ? 'Super-admin' : 'Récolteur';
-  const tp = document.getElementById('tab-prices');
-  const ta = document.getElementById('tab-admins');
-  if(tp) tp.style.display = role==='superadmin'?'':'none';
-  if(ta) ta.style.display = role==='superadmin'?'':'none';
-  const ts = document.getElementById('tab-scores');
-  if(ts) ts.style.display = role==='superadmin'?'':'none';
+  const u=currentUser();const role=u?.role||'';
+  const sub=document.getElementById('adm-sub');if(sub)sub.textContent=role==='superadmin'?'Super-admin':'Récolteur';
+  ['prices','admins','scores'].forEach(t=>{const el=document.getElementById('tab-'+t);if(el)el.style.display=role==='superadmin'?'':'none';});
 }
 
-// ══ CODE SUPER-ADMIN ════════════════════════════════════════════
-function applySACode(){
-  const input = document.getElementById('sa-code-input');
-  const msg   = document.getElementById('sa-code-msg');
-  if(!input || !msg) return;
-  const code = input.value.trim();
-  if(!code){ msg.style.color='var(--red)'; msg.textContent='Entrez un code.'; return; }
-  if(code !== SA_PW){ msg.style.color='var(--red)'; msg.textContent='Code incorrect.'; return; }
-  // promouvoir en superadmin
-  const u = currentUser();
-  if(!u){ return; }
-  const users = loadUsers();
-  if(users[u.key]){
-    users[u.key].role = 'superadmin';
-    saveUsers(users);
-  }
-  saveSess({...u, role:'superadmin'});
-  input.value = '';
-  msg.style.color='var(--green)';
-  msg.textContent='✓ Rôle super-admin activé !';
-  setTimeout(()=>{ setupAdminUI(); initUI(); goAdmin(); }, 800);
-}
+// ══ LOADING HELPERS ═══════════════════════════════════════════════
+function showLoading(containerId){const el=document.getElementById(containerId);if(el)el.style.opacity='.5';}
+function hideLoading(containerId){const el=document.getElementById(containerId);if(el)el.style.opacity='';}
+function showPageLoading(){document.getElementById('page-loader').style.display='flex';}
+function hidePageLoading(){document.getElementById('page-loader').style.display='none';}
 
-// ══ FORMULAIRE ══════════════════════════════════════════════════
 // ══ FORMULAIRE ════════════════════════════════════════════════════
-function buildResList(){
-  const prices=loadPrices();
+async function buildResList(){
+  const prices=await fbGetPrices();
   const el=document.getElementById('res-list');if(!el)return;
-  el.innerHTML=RES.map(r=>`
-    <div class="res-row">
-      <span class="res-label">
-        <span style="width:22px;text-align:center">${r.icon}</span>
-        ${r.label}
-        <span class="res-price">${prices[r.id]} ${CURRENCY}/u</span>
-      </span>
-      <div class="res-ctrl">
-        <button class="pm" onclick="adj('${r.id}',-1)">−</button>
-        <input type="number" id="q-${r.id}" value="0" min="0" step="1" oninput="updateTotal()"/>
-        <button class="pm" onclick="adj('${r.id}',1)">+</button>
-      </div>
-    </div>`).join('');
+  el.innerHTML=RES.map(r=>'<div class="res-row"><span class="res-label"><span style="width:22px;text-align:center">'+r.icon+'</span>'+r.label+'<span class="res-price">'+prices[r.id]+' '+CURRENCY+'/u</span></span><div class="res-ctrl"><button class="pm" data-adj="'+r.id+'" data-d="-1">−</button><input type="number" id="q-'+r.id+'" value="0" min="0" step="1" oninput="updateTotal()"/><button class="pm" data-adj="'+r.id+'" data-d="1">+</button></div></div>').join('');
+  el.querySelectorAll('[data-adj]').forEach(btn=>{btn.addEventListener('click',()=>{adj(btn.dataset.adj,parseInt(btn.dataset.d));});});
+  window._prices=prices;
   updateTotal();
 }
-function adj(id,d){
-  const e=document.getElementById('q-'+id);
-  e.value=Math.max(0,(parseInt(e.value)||0)+d);
-  updateTotal();
-}
-function calcTotal(){
-  const prices=loadPrices();
-  return RES.reduce((sum,r)=>{
-    const q=Math.max(0,parseInt(document.getElementById('q-'+r.id)?.value)||0);
-    return sum+(q*(prices[r.id]||1));
-  },0);
-}
-function updateTotal(){
-  const t=calcTotal();
-  document.getElementById('price-display').textContent=t+' '+CURRENCY;
-}
-function getSelectedRes(){
-  const prices=loadPrices();
-  return RES.map(r=>({...r,qte:Math.max(0,parseInt(document.getElementById('q-'+r.id)?.value)||0),price:prices[r.id]||1})).filter(r=>r.qte>0);
-}
+function adj(id,d){const e=document.getElementById('q-'+id);e.value=Math.max(0,(parseInt(e.value)||0)+d);updateTotal();}
+function calcTotal(){const prices=window._prices||{};return RES.reduce((s,r)=>s+(Math.max(0,parseInt(document.getElementById('q-'+r.id)?.value)||0)*(prices[r.id]||1)),0);}
+function updateTotal(){document.getElementById('price-display').textContent=calcTotal()+' '+CURRENCY;}
+function getSelectedRes(){const prices=window._prices||{};return RES.map(r=>({...r,qte:Math.max(0,parseInt(document.getElementById('q-'+r.id)?.value)||0),price:prices[r.id]||1})).filter(r=>r.qte>0);}
+
 function fConfirm(){
   const u=currentUser();if(!u){go('pg-auth');return;}
   const ressources=getSelectedRes();
   if(!ressources.length){alert('Indiquez au moins une ressource.');return;}
   const total=calcTotal();
-  document.getElementById('modal-recap').innerHTML=ressources.map(r=>`
-    <div class="my-row">
-      <span style="font-size:13px;color:var(--tx2)">${r.icon} ${r.label} ×${r.qte}</span>
-      <span style="font-size:13px;font-weight:600;color:var(--tx)">${r.qte*r.price} ${CURRENCY}</span>
-    </div>`).join('');
+  document.getElementById('modal-recap').innerHTML=ressources.map(r=>'<div class="my-row"><span style="font-size:13px;color:var(--tx2)">'+r.icon+' '+r.label+' ×'+r.qte+'</span><span style="font-size:13px;font-weight:600;color:var(--tx)">'+r.qte*r.price+' '+CURRENCY+'</span></div>').join('');
   document.getElementById('modal-price').textContent=total+' '+CURRENCY;
   document.getElementById('modal-confirm').classList.add('on');
 }
 function closeModal(){document.getElementById('modal-confirm').classList.remove('on');}
-function fSubmit(){
+
+async function fSubmit(){
   closeModal();
   const u=currentUser();if(!u)return;
-  const prices=loadPrices();
   const ressources=getSelectedRes();
   const total=calcTotal();
-  const cmd={
-    id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
-    userKey:u.key,displayName:u.displayName,grade:u.grade,
-    date:new Date().toLocaleString('fr-FR'),
-    ressources,totalPrice:total,statut:'awaiting-payment'
-  };
-  const all=loadCmds();all.push(cmd);saveCmds(all);
-  document.getElementById('f-recap').innerHTML=`
-    <div class="sec">Récapitulatif</div>
-    <div style="border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:.75rem">
-      ${ressources.map(r=>`<div class="my-row"><span style="font-size:13px;color:var(--tx2)">${r.icon} ${r.label} ×${r.qte}</span><span style="font-size:13px;font-weight:600;color:var(--gold)">${r.qte*r.price} ${CURRENCY}</span></div>`).join('')}
-    </div>
-    <div style="text-align:right;font-size:16px;font-weight:700;color:var(--gold);padding:0 14px">${total} ${CURRENCY}</div>`;
+  const cmd={userKey:u.key,displayName:u.displayName,grade:u.grade,date:new Date().toLocaleString('fr-FR'),ts:Date.now(),ressources,totalPrice:total,statut:'awaiting-payment',takenBy:null,takenKey:null};
+  showPageLoading();
+  const id=await fbSaveCmd(cmd);
+  hidePageLoading();
+  document.getElementById('f-recap').innerHTML='<div class="sec">Récapitulatif</div><div style="border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden;margin-bottom:.75rem">'+ressources.map(r=>'<div class="my-row"><span style="font-size:13px;color:var(--tx2)">'+r.icon+' '+r.label+' ×'+r.qte+'</span><span style="font-size:13px;font-weight:600;color:var(--gold)">'+r.qte*r.price+' '+CURRENCY+'</span></div>').join('')+'</div><div style="text-align:right;font-size:16px;font-weight:700;color:var(--gold);padding:0 14px">'+total+' '+CURRENCY+'</div>';
   document.getElementById('f-s1').style.display='none';
   document.getElementById('f-s2').style.display='';
 }
-function fReset(){
-  buildResList();
-  document.getElementById('f-s2').style.display='none';
-  document.getElementById('f-s1').style.display='';
-}
+
+function fReset(){buildResList();document.getElementById('f-s2').style.display='none';document.getElementById('f-s1').style.display='';}
 
 // ══ MON ESPACE ════════════════════════════════════════════════════
-function renderAccount(){
+async function renderAccount(){
   const u=currentUser();if(!u)return;
-  initUI(); // refresh nav
-  const roleBadge = u.role==='superadmin'
-    ? '<span class="badge-sa" style="margin-left:8px">Super-admin</span>'
-    : u.role==='admin'
-      ? '<span class="badge-a" style="margin-left:8px">Admin</span>'
-      : '';
-  const hdr = document.getElementById('account-header');
-  hdr.innerHTML=`
-    <div class="avatar">${initials(u.displayName)}</div>
-    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px"><div style="font-size:15px;font-weight:600">${u.displayName}</div>${roleBadge}<div style="font-size:12px;color:var(--tx3);width:100%">${u.grade}</div></div>`;
-
-  // zone code super-admin si pas encore superadmin
-  const saZone = document.getElementById('sa-zone');
-  if(saZone) {
-    if(u.role !== 'superadmin') {
-      saZone.style.display = '';
-    } else {
-      saZone.style.display = 'none';
-    }
-  }
-  const all=loadCmds();
+  initUI();
+  const roleBadge=u.role==='superadmin'?'<span class="badge-sa" style="margin-left:8px">Super-admin</span>':u.role==='admin'?'<span class="badge-a" style="margin-left:8px">Admin</span>':'';
+  document.getElementById('account-header').innerHTML='<div class="avatar">'+initials(u.displayName)+'</div><div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px"><div style="font-size:15px;font-weight:600">'+u.displayName+'</div>'+roleBadge+'<div style="font-size:12px;color:var(--tx3);width:100%">'+u.grade+'</div></div>';
+  const saZone=document.getElementById('sa-zone');
+  if(saZone)saZone.style.display=u.role!=='superadmin'?'':'none';
+  showPageLoading();
+  const all=await fbLoadCmds();
+  hidePageLoading();
   const mine=all.filter(c=>c.userKey===u.key).reverse();
   const el=document.getElementById('my-orders');
   if(!mine.length){el.innerHTML='<div class="empty">Vous n\'avez pas encore de commande.</div>';return;}
   el.innerHTML=mine.map(c=>{
     const st=STATUTS[c.statut]||STATUTS['awaiting-payment'];
-    return`<div class="cmd-acc" id="acc-${c.id}">
-      <div class="cmd-acc-head" onclick="toggleAcc('${c.id}')">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span class="stat-pill ${st.cls}"><span class="dot"></span>${st.icon} ${st.label}</span>
-          <span style="font-size:12px;color:var(--tx3)">${c.date}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:14px;font-weight:700;color:var(--gold)">${c.totalPrice} ${CURRENCY}</span>
-          <span class="chev">▼</span>
-        </div>
-      </div>
-      <div class="cmd-acc-body">
-        <div class="sbanner ${st.cls}" style="background:${sbbg(c.statut)};border-color:${sbborder(c.statut)}">
-          <span style="font-size:22px">${st.icon}</span>
-          <div>
-            <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;opacity:.7;margin-bottom:2px">État</div>
-            <div style="font-size:15px;font-weight:700;color:${sbcolor(c.statut)}">${st.label}</div>
-            <div style="font-size:12px;opacity:.8;margin-top:2px;color:${sbcolor(c.statut)}">${st.desc}</div>
-          </div>
-        </div>
-        <div class="sec">Ressources demandées</div>
-        <div style="border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden">
-          ${c.ressources.map(r=>`<div class="my-row"><span style="font-size:13px;color:var(--tx2)">${r.icon} ${r.label} ×${r.qte}</span><span style="font-size:13px;font-weight:600;color:var(--gold)">${r.qte*(r.price||1)} ${CURRENCY}</span></div>`).join('')}
-          <div class="my-row" style="background:var(--bg3)"><span style="font-size:13px;font-weight:600;color:var(--tx)">Total</span><span style="font-size:14px;font-weight:800;color:var(--gold)">${c.totalPrice} ${CURRENCY}</span></div>
-        </div>
-      </div>
-    </div>`;
+    return '<div class="cmd-acc" id="acc-'+c.id+'"><div class="cmd-acc-head" data-acc="'+c.id+'"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="stat-pill '+st.cls+'"><span class="dot"></span>'+st.icon+' '+st.label+'</span><span style="font-size:12px;color:var(--tx3)">'+c.date+'</span></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:14px;font-weight:700;color:var(--gold)">'+c.totalPrice+' '+CURRENCY+'</span><span class="chev">▼</span></div></div><div class="cmd-acc-body"><div class="sbanner '+st.cls+'" style="background:'+sbbg(c.statut)+';border-color:'+sbborder(c.statut)+'"><span style="font-size:22px">'+st.icon+'</span><div><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;opacity:.7;margin-bottom:2px">État</div><div style="font-size:15px;font-weight:700;color:'+sbcolor(c.statut)+'">'+st.label+'</div><div style="font-size:12px;opacity:.8;margin-top:2px;color:'+sbcolor(c.statut)+'">'+st.desc+'</div></div></div><div class="sec">Ressources demandées</div><div style="border:0.5px solid var(--bd);border-radius:var(--r);overflow:hidden">'+c.ressources.map(r=>'<div class="my-row"><span style="font-size:13px;color:var(--tx2)">'+r.icon+' '+r.label+' ×'+r.qte+'</span><span style="font-size:13px;font-weight:600;color:var(--gold)">'+r.qte*(r.price||1)+' '+CURRENCY+'</span></div>').join('')+'<div class="my-row" style="background:var(--bg3)"><span style="font-size:13px;font-weight:600;color:var(--tx)">Total</span><span style="font-size:14px;font-weight:800;color:var(--gold)">'+c.totalPrice+' '+CURRENCY+'</span></div></div></div></div>';
   }).join('');
+  el.querySelectorAll('[data-acc]').forEach(h=>{h.addEventListener('click',()=>document.getElementById('acc-'+h.dataset.acc).classList.toggle('open'));});
 }
-function toggleAcc(id){document.getElementById('acc-'+id).classList.toggle('open');}
-function sbbg(s){return{'awaiting-payment':'rgba(245,158,11,.1)',pending:'rgba(78,76,98,.15)',progress:'rgba(251,191,36,.07)',done:'rgba(74,222,128,.07)',ready:'rgba(96,165,250,.07)',collected:'rgba(124,111,247,.08)'}[s]||'rgba(78,76,98,.15)'}
-function sbborder(s){return{'awaiting-payment':'rgba(245,158,11,.35)',pending:'rgba(139,137,160,.2)',progress:'rgba(251,191,36,.3)',done:'rgba(74,222,128,.3)',ready:'rgba(96,165,250,.3)',collected:'rgba(124,111,247,.3)'}[s]||'rgba(139,137,160,.2)'}
-function sbcolor(s){return{'awaiting-payment':'var(--gold)',pending:'var(--tx2)',progress:'var(--amber)',done:'var(--green)',ready:'var(--blue)',collected:'var(--pl)'}[s]||'var(--tx2)'}
+
+function sbbg(s){return{'awaiting-payment':'rgba(245,158,11,.1)',pending:'rgba(78,76,98,.15)',progress:'rgba(251,191,36,.07)',done:'rgba(74,222,128,.07)',ready:'rgba(96,165,250,.07)',collected:'rgba(124,111,247,.08)'}[s]||'rgba(78,76,98,.15)';}
+function sbborder(s){return{'awaiting-payment':'rgba(245,158,11,.35)',pending:'rgba(139,137,160,.2)',progress:'rgba(251,191,36,.3)',done:'rgba(74,222,128,.3)',ready:'rgba(96,165,250,.3)',collected:'rgba(124,111,247,.3)'}[s]||'rgba(139,137,160,.2)';}
+function sbcolor(s){return{'awaiting-payment':'var(--gold)',pending:'var(--tx2)',progress:'var(--amber)',done:'var(--green)',ready:'var(--blue)',collected:'var(--pl)'}[s]||'var(--tx2)';}
+
+// ══ CODE SUPER-ADMIN ══════════════════════════════════════════════
+async function applySACode(){
+  const input=document.getElementById('sa-code-input');
+  const msg=document.getElementById('sa-code-msg');
+  if(!input||!msg)return;
+  const code=input.value.trim();
+  if(!code){msg.style.color='var(--red)';msg.textContent='Entrez un code.';return;}
+  if(code!==SA_PW){msg.style.color='var(--red)';msg.textContent='Code incorrect.';return;}
+  const u=currentUser();if(!u)return;
+  await fbSaveUser(u.key,{role:'superadmin'});
+  saveSess({...u,role:'superadmin'});
+  input.value='';
+  msg.style.color='var(--green)';msg.textContent='✓ Rôle super-admin activé !';
+  setTimeout(()=>{setupAdminUI();initUI();goAdmin();},800);
+}
 
 // ══ ADMIN ══════════════════════════════════════════════════════════
 function aTab(t){
   ['tot','cmds','prices','admins','scores'].forEach(x=>{
     document.getElementById('a-'+x).style.display=x===t?'':'none';
-    const el=document.getElementById('tab-'+x);
-    if(el)el.className='tab'+(x===t?' on':'');
+    const el=document.getElementById('tab-'+x);if(el)el.className='tab'+(x===t?' on':'');
   });
   if(t==='cmds')renderAdminCmds();
   if(t==='prices')renderPrices();
   if(t==='admins')renderAdminsList();
   if(t==='scores')renderScores();
 }
-function renderAdmin(){aTab('tot');}
 
-function renderAdminTot(){
-  const all=loadCmds();
+async function renderAdminTot(){
+  showPageLoading();
+  const all=await fbLoadCmds();
+  hidePageLoading();
   const tot={};RES.forEach(r=>tot[r.id]=0);
   all.forEach(c=>c.ressources.forEach(r=>{tot[r.id]=(tot[r.id]||0)+r.qte;}));
   const totalU=Object.values(tot).reduce((a,b)=>a+b,0);
   const totalR=all.reduce((s,c)=>s+(c.totalPrice||0),0);
   const counts={};Object.keys(STATUTS).forEach(k=>counts[k]=0);
   all.forEach(c=>counts[c.statut]=(counts[c.statut]||0)+1);
-  document.getElementById('a-tot').innerHTML=`
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.25rem">
-      <span style="font-size:12px;color:var(--tx2);background:var(--bg3);border:0.5px solid var(--bd2);border-radius:20px;padding:3px 10px">${all.length} commande${all.length>1?'s':''} · ${totalR} ${CURRENCY}</span>
-      ${Object.entries(STATUTS).filter(([k])=>counts[k]>0).map(([k,v])=>`<span class="stat-pill ${v.cls}"><span class="dot"></span>${v.icon} ${v.label} · ${counts[k]}</span>`).join('')}
-    </div>
-    <div style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden">
-      ${RES.map(r=>{const v=tot[r.id];return`
-        <div class="res-row" style="${v===0?'opacity:.3':''}">
-          <span class="res-label"><span>${r.icon}</span>${r.label}</span>
-          <span style="font-size:17px;font-weight:700;color:${v>0?'var(--pl)':'var(--tx3)'}">${v}</span>
-        </div>`;}).join('')}
-    </div>`;
+  document.getElementById('a-tot').innerHTML=
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.25rem">'+
+    '<span style="font-size:12px;color:var(--tx2);background:var(--bg3);border:0.5px solid var(--bd2);border-radius:20px;padding:3px 10px">'+all.length+' commande'+(all.length>1?'s':'')+' · '+totalR+' '+CURRENCY+'</span>'+
+    Object.entries(STATUTS).filter(([k])=>counts[k]>0).map(([k,v])=>'<span class="stat-pill '+v.cls+'"><span class="dot"></span>'+v.icon+' '+v.label+' · '+counts[k]+'</span>').join('')+
+    '</div>'+
+    '<div style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden">'+
+    RES.map(r=>{const v=tot[r.id];return'<div class="res-row" style="'+(v===0?'opacity:.3':'')+'"><span class="res-label"><span>'+r.icon+'</span>'+r.label+'</span><span style="font-size:17px;font-weight:700;color:'+(v>0?'var(--pl)':'var(--tx3)')+'">'+v+'</span></div>';}).join('')+
+    '</div>';
 }
 
-function renderAdminCmds(){
-  const q  = (document.getElementById('a-search')?.value||'').toLowerCase();
-  const sf = document.getElementById('a-filter')?.value||'all';
-  const u  = currentUser();
-  let all  = loadCmds();
-  if(q)          all = all.filter(c => c.displayName.toLowerCase().includes(q)||c.grade.toLowerCase().includes(q));
-  if(sf!=='all') all = all.filter(c => c.statut===sf);
-
-  const el = document.getElementById('a-cmds');
-
-  let html =
-    '<div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">' +
-      '<div class="sbar" style="flex:1;margin-bottom:0"><span class="ico">🔍</span>' +
-        '<input id="a-search" type="text" placeholder="Rechercher\u2026" oninput="renderAdminCmds()" value="' + q.replace(/"/g,'&quot;') + '"/>' +
-      '</div>' +
-      '<select id="a-filter" class="stat-sel" style="height:38px;padding:0 10px" onchange="renderAdminCmds()">' +
-        '<option value="all">Tous les \u00e9tats</option>' +
-        Object.entries(STATUTS).map(function(e){
-          return '<option value="'+e[0]+'"'+(sf===e[0]?' selected':'')+'>'+e[1].icon+' '+e[1].label+'</option>';
-        }).join('') +
-      '</select>' +
-    '</div>';
-
-  if(!all.length){
-    html += '<div class="empty">Aucune commande'+(q||sf!=='all'?' pour ce filtre':' enregistr\u00e9e')+'.</div>';
-    el.innerHTML = html;
-    return;
-  }
-
-  html += '<div style="display:flex;flex-direction:column;gap:8px">';
-
+async function renderAdminCmds(){
+  const q=(document.getElementById('a-search')?.value||'').toLowerCase();
+  const sf=document.getElementById('a-filter')?.value||'all';
+  const u=currentUser();
+  showPageLoading();
+  let all=await fbLoadCmds();
+  hidePageLoading();
+  if(q) all=all.filter(c=>c.displayName.toLowerCase().includes(q)||c.grade.toLowerCase().includes(q));
+  if(sf!=='all') all=all.filter(c=>c.statut===sf);
+  const el=document.getElementById('a-cmds');
+  let html=
+    '<div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">'+
+    '<div class="sbar" style="flex:1;margin-bottom:0"><span class="ico">🔍</span><input id="a-search" type="text" placeholder="Rechercher…" oninput="renderAdminCmds()" value="'+q.replace(/"/g,'&quot;')+'"/></div>'+
+    '<select id="a-filter" class="stat-sel" style="height:38px;padding:0 10px" onchange="renderAdminCmds()"><option value="all">Tous les états</option>'+
+    Object.entries(STATUTS).map(function(e){return'<option value="'+e[0]+'"'+(sf===e[0]?' selected':'')+'>'+e[1].icon+' '+e[1].label+'</option>';}).join('')+
+    '</select></div>';
+  if(!all.length){html+='<div class="empty">Aucune commande'+(q||sf!=='all'?' pour ce filtre':' enregistrée')+'.</div>';el.innerHTML=html;return;}
+  html+='<div style="display:flex;flex-direction:column;gap:8px">';
   [...all].reverse().forEach(function(c){
-    var st = STATUTS[c.statut]||STATUTS['awaiting-payment'];
-    var canTake = (u&&(u.role==='admin'||u.role==='superadmin'))&&!c.takenBy;
-
-    var takenHtml = c.takenBy
-      ? '<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--pl)"><span style="width:6px;height:6px;border-radius:50%;background:var(--pl);flex-shrink:0;display:inline-block"></span>'+c.takenBy+'</span>'
-      : (canTake
-        ? '<button class="btn bp" style="height:26px;font-size:11px;padding:0 10px;border-radius:6px" data-take="'+c.id+'">Prendre en charge</button>'
-        : '<span style="font-size:11px;color:var(--tx3)">Non prise</span>');
-
-    var statOpts = Object.entries(STATUTS).map(function(e){
-      return '<option value="'+e[0]+'"'+(c.statut===e[0]?' selected':'')+'>'+e[1].icon+' '+e[1].label+'</option>';
-    }).join('');
-
-    var resHtml = c.ressources.map(function(r){
-      return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--bg3);border:0.5px solid var(--bd2);border-radius:5px;padding:2px 7px;white-space:nowrap">'+r.icon+' '+r.label+' <strong style="color:var(--pl)">×'+r.qte+'</strong></span>';
-    }).join('');
-
-    html +=
-      '<div style="background:var(--bg2);border:0.5px solid var(--bd);border-radius:var(--rl);padding:12px 14px">' +
-        // ligne 1 : identité + statut + prise en charge + date
-        '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">' +
-          '<div style="display:flex;align-items:center;gap:10px">' +
-            '<div style="width:34px;height:34px;border-radius:50%;background:var(--pg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--pl);flex-shrink:0">'+
-              c.displayName.trim().split(/\s+/).map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase()+
-            '</div>'+
-            '<div>'+
-              '<div style="font-size:13px;font-weight:600;color:var(--tx)">'+c.displayName+'</div>'+
-              '<div style="font-size:11px;color:var(--tx3)">'+c.grade+' · '+c.date+'</div>'+
-            '</div>'+
-          '</div>'+
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
-            '<span style="font-size:14px;font-weight:800;color:var(--gold)">'+c.totalPrice+' '+CURRENCY+'</span>'+
-            '<select class="stat-sel" data-statut="'+c.id+'">'+statOpts+'</select>'+
-            takenHtml+
-          '</div>'+
-        '</div>'+
-        // ligne 2 : ressources
-        '<div style="display:flex;flex-wrap:wrap;gap:5px">'+resHtml+'</div>'+
+    const st=STATUTS[c.statut]||STATUTS['awaiting-payment'];
+    const canTake=(u&&(u.role==='admin'||u.role==='superadmin'))&&!c.takenBy;
+    const takenHtml=c.takenBy
+      ?'<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--pl)"><span style="width:6px;height:6px;border-radius:50%;background:var(--pl);display:inline-block"></span>'+c.takenBy+'</span>'
+      :(canTake?'<button class="btn bp" style="height:26px;font-size:11px;padding:0 10px;border-radius:6px" data-take="'+c.id+'">Prendre en charge</button>':'<span style="font-size:11px;color:var(--tx3)">Non prise</span>');
+    const statOpts=Object.entries(STATUTS).map(function(e){return'<option value="'+e[0]+'"'+(c.statut===e[0]?' selected':'')+'>'+e[1].icon+' '+e[1].label+'</option>';}).join('');
+    const resHtml=c.ressources.map(function(r){return'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--bg3);border:0.5px solid var(--bd2);border-radius:5px;padding:2px 7px;white-space:nowrap">'+r.icon+' '+r.label+' <strong style="color:var(--pl)">×'+r.qte+'</strong></span>';}).join('');
+    html+=
+      '<div style="background:var(--bg2);border:0.5px solid var(--bd);border-radius:var(--rl);padding:12px 14px">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+      '<div style="width:34px;height:34px;border-radius:50%;background:var(--pg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--pl);flex-shrink:0">'+c.displayName.trim().split(/\s+/).map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase()+'</div>'+
+      '<div><div style="font-size:13px;font-weight:600;color:var(--tx)">'+c.displayName+'</div><div style="font-size:11px;color:var(--tx3)">'+c.grade+' · '+c.date+'</div></div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+      '<span style="font-size:14px;font-weight:800;color:var(--gold)">'+c.totalPrice+' '+CURRENCY+'</span>'+
+      '<select class="stat-sel" data-statut="'+c.id+'">'+statOpts+'</select>'+
+      takenHtml+
+      '</div></div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:5px">'+resHtml+'</div>'+
       '</div>';
   });
-
-  html += '</div>';
-  el.innerHTML = html;
-
-  el.querySelectorAll('[data-take]').forEach(function(btn){
-    btn.addEventListener('click', function(){ takeCharge(btn.dataset.take); });
-  });
-  el.querySelectorAll('[data-statut]').forEach(function(sel){
-    sel.addEventListener('change', function(){ changeStatut(sel.dataset.statut, sel.value); });
-  });
+  html+='</div>';
+  el.innerHTML=html;
+  el.querySelectorAll('[data-take]').forEach(function(btn){btn.addEventListener('click',function(){takeCharge(btn.dataset.take);});});
+  el.querySelectorAll('[data-statut]').forEach(function(sel){sel.addEventListener('change',function(){changeStatut(sel.dataset.statut,sel.value);});});
 }
 
-function changeStatut(id,s){
-  const all=loadCmds();const i=all.findIndex(c=>c.id===id);if(i===-1)return;
-  all[i].statut=s;saveCmds(all);renderAdminTot();
+async function changeStatut(id,s){
+  await fbUpdateCmd(id,{statut:s});
+  renderAdminTot();
 }
 
-// ══ PRICES (super-admin) ══════════════════════════════════════════
-function renderPrices(){
-  const prices=loadPrices();
-  document.getElementById('a-prices').innerHTML=`
-    <div style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Modifiez le prix unitaire (en ${CURRENCY}) de chaque ressource. Les nouvelles commandes utiliseront ces tarifs.</div>
-    <div style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden;margin-bottom:1rem">
-      <table class="price-tbl">
-        ${RES.map(r=>`<tr>
-          <td style="color:var(--tx)">${r.icon} ${r.label}</td>
-          <td style="text-align:right">
-            <input type="number" id="price-${r.id}" value="${prices[r.id]||1}" min="0" step="1"/>
-          </td>
-        </tr>`).join('')}
-      </table>
-    </div>
-    <button class="btn bp" onclick="savePricesUI()">Enregistrer les prix</button>
-    <span id="price-saved" style="font-size:12px;color:var(--green);margin-left:12px;display:none">✓ Enregistré</span>`;
-}
-function savePricesUI(){
-  const p={};
-  RES.forEach(r=>{p[r.id]=Math.max(0,parseInt(document.getElementById('price-'+r.id)?.value)||0);});
-  savePrices(p);
-  const s=document.getElementById('price-saved');s.style.display='';
-  setTimeout(()=>s.style.display='none',2000);
-}
-
-// ══ ADMINS (super-admin) ══════════════════════════════════════════
-function userInitials(name){return name.trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase();}
-
-function renderAdminsList(){
-  const users = loadUsers();
-  const admins = [];
-  const nonAdmins = [];
-  Object.keys(users).forEach(k => {
-    if(users[k].role === 'superadmin') return; // les super-admins sont intouchables
-    if(users[k].role === 'admin') admins.push(k);
-    else nonAdmins.push(k);
-  });
-
-  function buildList(keys, containerId){
-    const el = document.getElementById(containerId);
-    if(!keys.length){
-      el.innerHTML = '<div class="empty" style="padding:1.25rem">Aucun élément.</div>';
-      return;
-    }
-    el.innerHTML = '';
-    keys.forEach(k => {
-      const u = users[k];
-      const row = document.createElement('div');
-      row.className = 'admin-row';
-      row.style.cssText = 'cursor:pointer;transition:background .15s';
-      row.innerHTML =
-        '<div style="display:flex;align-items:center;gap:10px">' +
-          '<div style="width:30px;height:30px;border-radius:50%;background:var(--pg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--pl);flex-shrink:0">' + userInitials(u.displayName) + '</div>' +
-          '<div>' +
-            '<div style="font-size:13px;color:var(--tx);font-weight:500">' + u.displayName + '</div>' +
-            '<div style="font-size:11px;color:var(--tx3)">' + u.grade + '</div>' +
-          '</div>' +
-        '</div>' +
-        (containerId === 'list-members'
-          ? '<span style="font-size:11px;color:var(--p);background:var(--pg);border:0.5px solid rgba(124,111,247,.3);border-radius:4px;padding:3px 8px;flex-shrink:0">+ Admin</span>'
-          : '<span class="badge-a" style="flex-shrink:0">Admin ✕</span>');
-
-      if(containerId === 'list-members'){
-        row.addEventListener('mouseover', () => row.style.background = 'var(--bg3)');
-        row.addEventListener('mouseout',  () => row.style.background = '');
-        row.addEventListener('click', () => doPromote(k));
-      } else {
-        row.addEventListener('mouseover', () => row.style.background = 'rgba(248,113,113,.07)');
-        row.addEventListener('mouseout',  () => row.style.background = '');
-        row.addEventListener('click', () => doDemote(k));
-      }
-      el.appendChild(row);
-    });
-  }
-
-  document.getElementById('a-admins').innerHTML =
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">' +
-      '<div>' +
-        '<div class="sec" style="margin-bottom:.75rem">👥 Membres — cliquer pour promouvoir</div>' +
-        '<div id="list-members" style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden"></div>' +
-      '</div>' +
-      '<div>' +
-        '<div class="sec" style="margin-bottom:.75rem">🔧 Admins actuels — cliquer pour retirer</div>' +
-        '<div id="list-admins" style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden"></div>' +
-      '</div>' +
-    '</div>';
-
-  buildList(nonAdmins, 'list-members');
-  buildList(admins,    'list-admins');
-}
-
-function doPromote(key){
-  const users = loadUsers();
-  if(!users[key]) return;
-  users[key].role = 'admin';
-  saveUsers(users);
-  // rafraîchir la session si c'est l'utilisateur courant
-  const u = currentUser();
-  if(u && u.key === key){ saveSess({...u, role:'admin'}); }
-  renderAdminsList();
-}
-function doDemote(key){
-  const users = loadUsers();
-  if(!users[key]) return;
-  showConfirmDemote(key, users[key].displayName, users[key]);
-}
-function showConfirmDemote(key, name, userData){
-  // remove any existing confirm bar
-  const old = document.getElementById('demote-confirm-bar');
-  if(old) old.remove();
-  const bar = document.createElement('div');
-  bar.id = 'demote-confirm-bar';
-  bar.style.cssText = 'background:rgba(248,113,113,.1);border:0.5px solid rgba(248,113,113,.4);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;flex-wrap:wrap';
-  bar.innerHTML =
-    '<span style="font-size:13px;color:var(--tx)">Retirer le rôle admin à <strong>' + name + '</strong> ?</span>' +
-    '<div style="display:flex;gap:8px">' +
-      '<button id="demote-cancel" style="height:30px;padding:0 12px;border-radius:6px;border:0.5px solid var(--bd2);background:transparent;color:var(--tx2);cursor:pointer;font-size:12px">Annuler</button>' +
-      '<button id="demote-ok"     style="height:30px;padding:0 12px;border-radius:6px;border:none;background:var(--red);color:#fff;cursor:pointer;font-size:12px;font-weight:600">Retirer</button>' +
-    '</div>';
-  document.getElementById('a-admins').after(bar);
-  document.getElementById('demote-cancel').onclick = () => bar.remove();
-  document.getElementById('demote-ok').onclick = () => {
-    bar.remove();
-    const users = loadUsers();
-    if(!users[key]) return;
-    delete users[key].role;
-    saveUsers(users);
-    // rafraîchir la session si c'est l'utilisateur courant
-    const u = currentUser();
-    if(u && u.key === key){ saveSess({...u, role:null}); }
-    renderAdminsList();
-  };
-}
-
-// ══ PRISE EN CHARGE ══════════════════════════════════════════════
-function takeCharge(cmdId){
-  const u = currentUser();
-  if(!u || (u.role !== 'admin' && u.role !== 'superadmin')) return;
-  const all = loadCmds();
-  const idx = all.findIndex(c => c.id === cmdId);
-  if(idx === -1) return;
-  if(all[idx].takenBy) return; // déjà prise
-  all[idx].takenBy = u.displayName;
-  all[idx].takenKey = u.key;
-  // passer automatiquement en "en cours" si encore en attente
-  if(all[idx].statut === 'pending') all[idx].statut = 'progress';
-  saveCmds(all);
+async function takeCharge(cmdId){
+  const u=currentUser();
+  if(!u||(u.role!=='admin'&&u.role!=='superadmin'))return;
+  showPageLoading();
+  const snap=await getDoc(doc(db,'commandes',cmdId));
+  if(!snap.exists()||snap.data().takenBy){hidePageLoading();return;}
+  const updates={takenBy:u.displayName,takenKey:u.key};
+  if(snap.data().statut==='pending')updates.statut='progress';
+  await fbUpdateCmd(cmdId,updates);
+  hidePageLoading();
   renderAdminCmds();
   renderAdminTot();
 }
 
-// ══ SCORES (super-admin) ══════════════════════════════════════════
-function renderScores(){
-  const all   = loadCmds();
-  const el    = document.getElementById('a-scores');
-  const stats = {};
+async function renderPrices(){
+  const prices=await fbGetPrices();
+  document.getElementById('a-prices').innerHTML=
+    '<div style="font-size:13px;color:var(--tx2);margin-bottom:1rem">Modifiez le prix unitaire (en '+CURRENCY+') de chaque ressource.</div>'+
+    '<div style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden;margin-bottom:1rem">'+
+    '<table class="price-tbl">'+
+    RES.map(r=>'<tr><td style="color:var(--tx)">'+r.icon+' '+r.label+'</td><td style="text-align:right"><input type="number" id="price-'+r.id+'" value="'+(prices[r.id]||1)+'" min="0" step="1"/></td></tr>').join('')+
+    '</table></div>'+
+    '<button class="btn bp" onclick="savePricesUI()">Enregistrer les prix</button>'+
+    '<span id="price-saved" style="font-size:12px;color:var(--green);margin-left:12px;display:none">✓ Enregistré</span>';
+}
 
+async function savePricesUI(){
+  const p={};RES.forEach(r=>{p[r.id]=Math.max(0,parseInt(document.getElementById('price-'+r.id)?.value)||0);});
+  await fbSavePrices(p);
+  const s=document.getElementById('price-saved');s.style.display='';setTimeout(()=>s.style.display='none',2000);
+}
+
+async function renderAdminsList(){
+  showPageLoading();
+  const users=await fbLoadUsers();
+  hidePageLoading();
+  const admins=[];const nonAdmins=[];
+  Object.keys(users).forEach(k=>{
+    if(users[k].role==='superadmin')return;
+    if(users[k].role==='admin')admins.push(k);
+    else nonAdmins.push(k);
+  });
+  function card(k,lbl){
+    const u=users[k];
+    const row=document.createElement('div');
+    row.className='admin-row';row.style.cssText='cursor:pointer;transition:background .15s';
+    row.innerHTML='<div style="display:flex;align-items:center;gap:10px"><div style="width:30px;height:30px;border-radius:50%;background:var(--pg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--pl);flex-shrink:0">'+userInitials(u.displayName)+'</div><div><div style="font-size:13px;color:var(--tx);font-weight:500">'+u.displayName+'</div><div style="font-size:11px;color:var(--tx3)">'+u.grade+'</div></div></div>'+lbl;
+    return row;
+  }
+  function buildList(keys,containerId){
+    const el=document.getElementById(containerId);
+    if(!keys.length){el.innerHTML='<div class="empty" style="padding:1.25rem">Aucun élément.</div>';return;}
+    el.innerHTML='';
+    keys.forEach(k=>{
+      const isMembers=containerId==='list-members';
+      const lbl=isMembers?'<span style="font-size:11px;color:var(--p);background:var(--pg);border:0.5px solid rgba(124,111,247,.3);border-radius:4px;padding:3px 8px;flex-shrink:0">+ Admin</span>':'<span class="badge-a" style="flex-shrink:0">Admin ✕</span>';
+      const row=card(k,lbl);
+      row.addEventListener('mouseover',()=>row.style.background=isMembers?'var(--bg3)':'rgba(248,113,113,.07)');
+      row.addEventListener('mouseout',()=>row.style.background='');
+      row.addEventListener('click',()=>isMembers?doPromote(k):doDemote(k,users[k].displayName));
+      el.appendChild(row);
+    });
+  }
+  document.getElementById('a-admins').innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">'+
+    '<div><div class="sec" style="margin-bottom:.75rem">👥 Membres — cliquer pour promouvoir</div><div id="list-members" style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden"></div></div>'+
+    '<div><div class="sec" style="margin-bottom:.75rem">🔧 Admins actuels — cliquer pour retirer</div><div id="list-admins" style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden"></div></div>'+
+    '</div>';
+  buildList(nonAdmins,'list-members');
+  buildList(admins,'list-admins');
+}
+
+async function doPromote(key){
+  await fbSaveUser(key,{role:'admin'});
+  renderAdminsList();
+}
+function doDemote(key,name){
+  const old=document.getElementById('demote-confirm-bar');if(old)old.remove();
+  const bar=document.createElement('div');bar.id='demote-confirm-bar';
+  bar.style.cssText='background:rgba(248,113,113,.1);border:0.5px solid rgba(248,113,113,.4);border-radius:var(--r);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;flex-wrap:wrap';
+  bar.innerHTML='<span style="font-size:13px;color:var(--tx)">Retirer le rôle admin à <strong>'+name+'</strong> ?</span><div style="display:flex;gap:8px"><button id="demote-cancel" style="height:30px;padding:0 12px;border-radius:6px;border:0.5px solid var(--bd2);background:transparent;color:var(--tx2);cursor:pointer;font-size:12px">Annuler</button><button id="demote-ok" style="height:30px;padding:0 12px;border-radius:6px;border:none;background:var(--red);color:#fff;cursor:pointer;font-size:12px;font-weight:600">Retirer</button></div>';
+  document.getElementById('a-admins').after(bar);
+  document.getElementById('demote-cancel').onclick=()=>bar.remove();
+  document.getElementById('demote-ok').onclick=async()=>{bar.remove();await fbSaveUser(key,{role:null});renderAdminsList();};
+}
+
+async function renderScores(){
+  showPageLoading();
+  const all=await fbLoadCmds();
+  hidePageLoading();
+  const el=document.getElementById('a-scores');
+  const stats={};
   all.forEach(function(c){
-    if(!c.takenBy) return;
-    var k = c.takenKey || c.takenBy;
-    if(!stats[k]) stats[k] = {name: c.takenBy, cmds: [], resByRes: {}};
+    if(!c.takenBy)return;
+    const k=c.takenKey||c.takenBy;
+    if(!stats[k])stats[k]={name:c.takenBy,cmds:[],resByRes:{}};
     stats[k].cmds.push(c);
     c.ressources.forEach(function(r){
-      stats[k].resByRes[r.id] = stats[k].resByRes[r.id] || {label: r.label, icon: r.icon, total: 0};
-      stats[k].resByRes[r.id].total += r.qte;
+      stats[k].resByRes[r.id]=stats[k].resByRes[r.id]||{label:r.label,icon:r.icon,total:0};
+      stats[k].resByRes[r.id].total+=r.qte;
     });
   });
-
-  var rows = Object.values(stats).sort(function(a,b){ return b.cmds.length - a.cmds.length; });
-
-  if(!rows.length){
-    el.innerHTML = '<div class="empty">Aucune commande prise en charge pour le moment.</div>';
-    return;
-  }
-
-  var html = '<div style="display:flex;flex-direction:column;gap:12px">';
-
-  rows.forEach(function(r, i){
-    var medal = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : '#'+(i+1);
-    var resRows = Object.values(r.resByRes).sort(function(a,b){ return b.total - a.total; });
-    var resHtml = resRows.map(function(res){
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--bd)">' +
-        '<span style="font-size:12px;color:var(--tx2)">' + res.icon + ' ' + res.label + '</span>' +
-        '<span style="font-size:13px;font-weight:700;color:var(--pl)">' + res.total + '</span>' +
-      '</div>';
-    }).join('');
-
-    var cmdCards = r.cmds.map(function(c){
-      var resDetail = c.ressources.map(function(res){
-        return '<span class="tag">' + res.icon + ' ' + res.label + ' ×' + res.qte + '</span>';
-      }).join('');
-      return '<div style="background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--r);padding:9px 12px;margin-bottom:6px">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-          '<span style="font-size:12px;font-weight:600;color:var(--tx)">' + c.displayName + ' <span style="font-weight:400;color:var(--tx3)">· ' + c.grade + '</span></span>' +
-          '<span style="font-size:12px;font-weight:700;color:var(--gold)">' + c.totalPrice + ' ' + CURRENCY + '</span>' +
-        '</div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">' + resDetail + '</div>' +
-        '<div style="font-size:10px;color:var(--tx3)">' + c.date + '</div>' +
-      '</div>';
-    }).join('');
-
-    html +=
-      '<div style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden">' +
-        // header récolteur
-        '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg3);cursor:pointer" data-stoggle="sc-' + i + '">' +
-          '<div style="display:flex;align-items:center;gap:12px">' +
-            '<span style="font-size:22px">' + medal + '</span>' +
-            '<div>' +
-              '<div style="font-size:14px;font-weight:600;color:var(--tx)">' + r.name + '</div>' +
-              '<div style="font-size:11px;color:var(--tx3)">' + r.cmds.length + ' commande' + (r.cmds.length>1?'s':'') + ' prise' + (r.cmds.length>1?'s':'') + ' en charge</div>' +
-            '</div>' +
-          '</div>' +
-          '<span style="font-size:12px;color:var(--tx3)">▼</span>' +
-        '</div>' +
-        // body dépliable
-        '<div id="sc-' + i + '" style="display:none;padding:14px 16px">' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">' +
-            // ressources individuelles
-            '<div>' +
-              '<div class="sec" style="margin-bottom:.5rem">Ressources récoltées</div>' +
-              (resRows.length ? '<div style="border:0.5px solid var(--bd);border-radius:var(--r);padding:4px 12px">' + resHtml + '</div>'
-                              : '<div style="font-size:12px;color:var(--tx3)">Aucune donnée.</div>') +
-            '</div>' +
-            // commandes détail
-            '<div>' +
-              '<div class="sec" style="margin-bottom:.5rem">Commandes traitées</div>' +
-              cmdCards +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
+  const rows=Object.values(stats).sort(function(a,b){return b.cmds.length-a.cmds.length;});
+  if(!rows.length){el.innerHTML='<div class="empty">Aucune commande prise en charge pour le moment.</div>';return;}
+  let html='<div style="display:flex;flex-direction:column;gap:12px">';
+  rows.forEach(function(r,i){
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+    const resRows=Object.values(r.resByRes).sort(function(a,b){return b.total-a.total;});
+    const resHtml=resRows.map(function(res){return'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--bd)"><span style="font-size:12px;color:var(--tx2)">'+res.icon+' '+res.label+'</span><span style="font-size:13px;font-weight:700;color:var(--pl)">'+res.total+'</span></div>';}).join('');
+    const cmdCards=r.cmds.map(function(c){return'<div style="background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--r);padding:9px 12px;margin-bottom:6px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:12px;font-weight:600;color:var(--tx)">'+c.displayName+' <span style="font-weight:400;color:var(--tx3)">· '+c.grade+'</span></span><span style="font-size:12px;font-weight:700;color:var(--gold)">'+c.totalPrice+' '+CURRENCY+'</span></div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">'+c.ressources.map(function(res){return'<span class="tag">'+res.icon+' '+res.label+' ×'+res.qte+'</span>';}).join('')+'</div><div style="font-size:10px;color:var(--tx3)">'+c.date+'</div></div>';}).join('');
+    html+=
+      '<div style="border:0.5px solid var(--bd);border-radius:var(--rl);overflow:hidden">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--bg3);cursor:pointer" data-stoggle="sc-'+i+'">'+
+      '<div style="display:flex;align-items:center;gap:12px"><span style="font-size:22px">'+medal+'</span><div><div style="font-size:14px;font-weight:600;color:var(--tx)">'+r.name+'</div><div style="font-size:11px;color:var(--tx3)">'+r.cmds.length+' commande'+(r.cmds.length>1?'s':'')+' prise'+(r.cmds.length>1?'s':'')+' en charge</div></div></div>'+
+      '<span style="font-size:12px;color:var(--tx3)">▼</span></div>'+
+      '<div id="sc-'+i+'" style="display:none;padding:14px 16px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">'+
+      '<div><div class="sec" style="margin-bottom:.5rem">Ressources récoltées</div>'+(resRows.length?'<div style="border:0.5px solid var(--bd);border-radius:var(--r);padding:4px 12px">'+resHtml+'</div>':'<div style="font-size:12px;color:var(--tx3)">Aucune donnée.</div>')+'</div>'+
+      '<div><div class="sec" style="margin-bottom:.5rem">Commandes traitées</div>'+cmdCards+'</div>'+
+      '</div></div></div>';
   });
-
-  html += '</div>';
-  el.innerHTML = html;
+  html+='</div>';
+  el.innerHTML=html;
   el.querySelectorAll('[data-stoggle]').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      var target = document.getElementById(btn.dataset.stoggle);
-      if(target) target.style.display = target.style.display === 'none' ? '' : 'none';
-    });
+    btn.addEventListener('click',function(){const t=document.getElementById(btn.dataset.stoggle);if(t)t.style.display=t.style.display==='none'?'':'none';});
   });
 }
 
-
 // ══ EXPORT ════════════════════════════════════════════════════════
-function exportXl(){
-  const all=loadCmds();if(!all.length){alert('Aucune commande à exporter.');return;}
+async function exportXl(){
+  showPageLoading();
+  const all=await fbLoadCmds();
+  hidePageLoading();
+  if(!all.length){alert('Aucune commande à exporter.');return;}
   const wb=XLSX.utils.book_new();
-  const rows=[['Nom','Grade','Ressource','Quantité','Prix unit.','Sous-total','Total commande','État','Date']];
-  all.forEach(c=>c.ressources.forEach((r,i)=>rows.push([
-    c.displayName,c.grade,r.label,r.qte,r.price||1,r.qte*(r.price||1),
-    i===0?c.totalPrice:'',STATUTS[c.statut]?.label||c.statut,c.date
-  ])));
+  const rows=[['Nom','Grade','Ressource','Quantité','Prix unit.','Sous-total','Total commande','État','Pris en charge par','Date']];
+  all.forEach(c=>c.ressources.forEach((r,i)=>rows.push([c.displayName,c.grade,r.label,r.qte,r.price||1,r.qte*(r.price||1),i===0?c.totalPrice:'',STATUTS[c.statut]?.label||c.statut,c.takenBy||'—',c.date])));
   const ws1=XLSX.utils.aoa_to_sheet(rows);
-  ws1['!cols']=[{wch:22},{wch:18},{wch:28},{wch:8},{wch:10},{wch:10},{wch:14},{wch:20},{wch:20}];
+  ws1['!cols']=[{wch:22},{wch:18},{wch:28},{wch:8},{wch:10},{wch:10},{wch:14},{wch:20},{wch:18},{wch:20}];
   XLSX.utils.book_append_sheet(wb,ws1,'Commandes');
   const tot={};RES.forEach(r=>tot[r.id]=0);
   all.forEach(c=>c.ressources.forEach(r=>{tot[r.id]=(tot[r.id]||0)+r.qte;}));
@@ -1053,17 +786,17 @@ function exportXl(){
   XLSX.utils.book_append_sheet(wb,ws2,'Totaux');
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
   const url=URL.createObjectURL(new Blob([buf],{type:'application/octet-stream'}));
-  const a=document.createElement('a');a.href=url;a.download=`CommandePL_${new Date().toISOString().split('T')[0]}.xlsx`;a.click();
+  const a=document.createElement('a');a.href=url;a.download='CommandePL_'+new Date().toISOString().split('T')[0]+'.xlsx';a.click();
   URL.revokeObjectURL(url);
 }
 
 // ══ INIT ══════════════════════════════════════════════════════════
-document.getElementById('modal-confirm').addEventListener('click', e => {
-  if(e.target === e.currentTarget) closeModal();
-});
-
+document.getElementById('modal-confirm').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
 initUI();
+
 </script>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<div id="page-loader" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center"><div style="background:var(--bg2);border:0.5px solid var(--bd2);border-radius:var(--rl);padding:1.5rem 2rem;font-size:14px;color:var(--tx2)">Chargement…</div></div>
 </body>
 </html>
